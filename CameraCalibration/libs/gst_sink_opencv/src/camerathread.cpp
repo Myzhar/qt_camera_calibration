@@ -11,9 +11,6 @@ CameraThread::CameraThread()
 {
     qRegisterMetaType<cv::Mat>( "cv::Mat" );
 
-    mBufPushIdx=0;
-    mBufPopIdx=0;
-    mFrameBuffer.resize(MAT_BUF_SIZE);
 }
 
 CameraThread::~CameraThread()
@@ -52,9 +49,6 @@ void CameraThread::run()
 
     emit cameraConnected();
 
-    mBufPushIdx=0;
-    mBufPopIdx=0;
-
     forever
     {
         if( isInterruptionRequested() )
@@ -64,18 +58,11 @@ void CameraThread::run()
             break;
         }
 
-        //mFrameMutex.lock();
+        cv::Mat frame = mImageSink->getLastFrame().clone();
 
-        mFrameBuffer[mBufPushIdx] = mImageSink->getLastFrame().clone();
-        if( !mFrameBuffer[mBufPushIdx].empty() )
-            mBufPushIdx = (mBufPushIdx+1)%MAT_BUF_SIZE;
-
-        //mFrameMutex.unlock();
-
-        if( !mFrameBuffer[mBufPopIdx].empty() )
+        if( !frame.empty() && !frame.rows==0 && !frame.cols==0 )
         {
-            emit newImage( mFrameBuffer[mBufPopIdx] );
-            mBufPopIdx = (mBufPopIdx+1)%MAT_BUF_SIZE;
+            emit newImage( frame );
         }
     }
 

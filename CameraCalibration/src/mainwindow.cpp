@@ -160,7 +160,25 @@ void MainWindow::onCameraDisconnected()
 
 void MainWindow::onNewImage( cv::Mat frame )
 {
+    static int frameW = 0;
+    static int frameH = 0;
+
+    if( frameW != frame.cols ||
+            frameH != frame.rows)
+    {
+        ui->graphicsView_raw->fitInView(QRectF(0,0, frame.cols, frame.rows),
+                                           Qt::KeepAspectRatio );
+        ui->graphicsView_checkboard->fitInView(QRectF(0,0, frame.cols, frame.rows),
+                                           Qt::KeepAspectRatio );
+        ui->graphicsView_undistorted->fitInView(QRectF(0,0, frame.cols, frame.rows),
+                                           Qt::KeepAspectRatio );
+        frameW = frame.cols;
+        frameH = frame.rows;
+    }
+
     mCameraSceneRaw->setFgImage(frame);
+    mCameraSceneCheckboard->setFgImage(frame);
+    mCameraSceneUndistorted->setFgImage(frame);
 }
 
 void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
@@ -251,7 +269,7 @@ bool MainWindow::startGstProcess( )
                 tr("gst-launch-1.0 v4l2src device=%1 ! "
                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! videoconvert ! "
                    //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
-                   "x264enc key-int-max=1 tune=zerolatency bitrate=1024 ! "
+                   "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
                    "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                    "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
 #endif

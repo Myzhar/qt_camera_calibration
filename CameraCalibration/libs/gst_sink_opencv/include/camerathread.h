@@ -3,7 +3,7 @@
 
 #include <QThread>
 #include <QMutex>
-#include <QVector>
+#include <QQueue>
 
 #include <opencv2/core/core.hpp>
 #include "gst_sink_opencv.hpp"
@@ -28,12 +28,6 @@ protected:
 
 private:
     GstSinkOpenCV* mImageSink;
-
-    QVector<cv::Mat> mFrameBuffer;
-    int mBufPushIdx;
-    int mBufPopIdx;
-
-    QMutex mFrameMutex;
 };
 
 #endif // CAMERATHREAD_H
