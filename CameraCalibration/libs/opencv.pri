@@ -15,6 +15,7 @@ CONFIG(release, debug|release) {
     LIBS += \
             -L$$OCV_LIBS_PATH \
             -lopencv_core \
+            -lopencv_imgproc \
             -lopencv_highgui \
             -lopencv_calib3d \
             -lopencv_features2d
@@ -27,6 +28,7 @@ CONFIG(debug, debug|release) {
     LIBS += \
             -L$$OCV_LIBS_PATH \
             -lopencv_core \
+            -lopencv_imgproc \
             -lopencv_highgui \
             -lopencv_calib3d \
             -lopencv_features2d

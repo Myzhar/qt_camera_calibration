@@ -19,11 +19,15 @@ include(libs/qt_opencv_scene/qt_opencv_scene.pri)
 
 
 SOURCES += \
-            src/main.cpp\
-            src/mainwindow.cpp
+    src/main.cpp\
+    src/mainwindow.cpp \
+    src/qchessboardelab.cpp \
+    src/qfisheyeundistort.cpp
 
 HEADERS  += \
-            include/mainwindow.h
+    include/mainwindow.h \
+    include/qchessboardelab.h \
+    include/qfisheyeundistort.h
 
 FORMS    += \
             forms/mainwindow.ui

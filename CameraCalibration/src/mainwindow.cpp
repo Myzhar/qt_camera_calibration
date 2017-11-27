@@ -7,6 +7,15 @@
 #include <QCameraInfo>
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+
+#include <vector>
+
+#include "qchessboardelab.h"
+#include "qfisheyeundistort.h"
+
+using namespace std;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -14,7 +23,8 @@ MainWindow::MainWindow(QWidget *parent) :
     mCameraThread(NULL),
     mCameraSceneRaw(NULL),
     mCameraSceneCheckboard(NULL),
-    mCameraSceneUndistorted(NULL)
+    mCameraSceneUndistorted(NULL),
+    mFisheyeUndist(NULL)
 {
     ui->setupUi(this);
 
@@ -44,13 +54,21 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->graphicsView_undistorted->setScene( mCameraSceneUndistorted );
     ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(50,50,200) ) );
 
-
     // <<<<< Stream rendering
 
+    mElabPool.setMaxThreadCount( 3 );
 }
 
 MainWindow::~MainWindow()
 {
+    while( mGstProcess.state() == QProcess::Running )
+    {
+        mGstProcess.kill();
+        QApplication::processEvents( QEventLoop::AllEvents, 50 );
+    }
+
+    mElabPool.clear();
+
     delete ui;
 
     if(mCameraThread)
@@ -65,6 +83,8 @@ MainWindow::~MainWindow()
     if(mCameraSceneUndistorted)
         delete mCameraSceneUndistorted;
 
+    if(mFisheyeUndist)
+        delete mFisheyeUndist;
 }
 
 QString MainWindow::updateOpenCvVer()
@@ -160,6 +180,7 @@ void MainWindow::onCameraDisconnected()
 
 void MainWindow::onNewImage( cv::Mat frame )
 {
+
     static int frameW = 0;
     static int frameH = 0;
 
@@ -167,18 +188,38 @@ void MainWindow::onNewImage( cv::Mat frame )
             frameH != frame.rows)
     {
         ui->graphicsView_raw->fitInView(QRectF(0,0, frame.cols, frame.rows),
-                                           Qt::KeepAspectRatio );
+                                        Qt::KeepAspectRatio );
         ui->graphicsView_checkboard->fitInView(QRectF(0,0, frame.cols, frame.rows),
-                                           Qt::KeepAspectRatio );
+                                               Qt::KeepAspectRatio );
         ui->graphicsView_undistorted->fitInView(QRectF(0,0, frame.cols, frame.rows),
-                                           Qt::KeepAspectRatio );
+                                                Qt::KeepAspectRatio );
         frameW = frame.cols;
         frameH = frame.rows;
     }
 
     mCameraSceneRaw->setFgImage(frame);
-    mCameraSceneCheckboard->setFgImage(frame);
-    mCameraSceneUndistorted->setFgImage(frame);
+
+    QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mFisheyeUndist );
+    //mElabPool.start( elab );
+    mElabPool.tryStart(elab);
+
+    cv::Mat rectified = mFisheyeUndist->undistort( frame );
+
+    if( rectified.empty() )
+    {
+        mCameraSceneUndistorted->setFgImage(frame);
+    }
+    else
+    {
+        mCameraSceneUndistorted->setFgImage(rectified);
+    }
+
+}
+
+
+void MainWindow::onNewCbImage(cv::Mat cbImage)
+{
+    mCameraSceneCheckboard->setFgImage(cbImage);
 }
 
 void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
@@ -189,6 +230,17 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         mSrcWidth = ui->lineEdit_camera_w->text().toInt();
         mSrcHeight = ui->lineEdit_camera_h->text().toInt();
         mSrcFps = ui->lineEdit_camera_fps->text().toInt();
+
+        mCbSize.width = ui->lineEdit_chessboard_cols->text().toInt();
+        mCbSize.height = ui->lineEdit__chessboard_rows->text().toInt();
+        mCbSizeMm = ui->lineEdit__chessboard_mm->text().toDouble();
+
+        if(mFisheyeUndist)
+        {
+            delete mFisheyeUndist;
+        }
+
+        mFisheyeUndist = new QFisheyeUndistort();
 
         if( startCamera() )
         {
@@ -255,23 +307,23 @@ bool MainWindow::startGstProcess( )
     QString launchStr;
 
 #ifdef USE_ARM
-        launchStr = tr(
-                    "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
-                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! nvvidconv ! "
-                    "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
-                    //"omxh264enc low-latency=true insert-sps-pps=true ! "
-                    "omxh264enc insert-sps-pps=true ! "
-                    "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-                    "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
-                    ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
+    launchStr = tr(
+                "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
+                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! nvvidconv ! "
+                "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
+                //"omxh264enc low-latency=true insert-sps-pps=true ! "
+                "omxh264enc insert-sps-pps=true ! "
+                "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+                "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
+                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
 #else
-        launchStr =
-                tr("gst-launch-1.0 v4l2src device=%1 ! "
-                   "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! videoconvert ! "
-                   //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
-                   "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
-                   "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-                   "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
+    launchStr =
+            tr("gst-launch-1.0 v4l2src device=%1 ! "
+               "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! videoconvert ! "
+               //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
+               "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
+               "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+               "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);

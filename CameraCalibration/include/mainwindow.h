@@ -5,11 +5,14 @@
 #include <QLabel>
 #include <QCameraInfo>
 #include <QProcess>
+#include <QThreadPool>
 
 #include <opencv2/core/core.hpp>
 
 class CameraThread;
 class QOpenCVScene;
+
+class QFisheyeUndistort;
 
 namespace Ui {
 class MainWindow;
@@ -30,10 +33,14 @@ protected:
     bool startCamera();
     void stopCamera();
 
+public slots:
+    void onNewImage(cv::Mat frame);
+    void onNewCbImage(cv::Mat cbImage);
+
 protected slots:
     void onCameraConnected();
     void onCameraDisconnected();
-    void onNewImage(cv::Mat frame);
+
     void onProcessReadyRead();
 
 private slots:
@@ -63,6 +70,13 @@ private:
     int mSrcWidth;
     int mSrcHeight;
     int mSrcFps;
+
+    cv::Size mCbSize;
+    double mCbSizeMm;
+
+    QThreadPool mElabPool;
+
+    QFisheyeUndistort* mFisheyeUndist;
 };
 
 #endif // MAINWINDOW_H
