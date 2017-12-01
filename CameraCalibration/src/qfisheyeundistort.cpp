@@ -6,16 +6,15 @@ using namespace std;
 
 QFisheyeUndistort::QFisheyeUndistort(QObject *parent) : QObject(parent)
 {
-    mIntrinsic =  cv::Mat(3, 3, CV_64FC1 );
-    mIntrinsic.ptr<double>(0)[0] = 1.0;
-    mIntrinsic.ptr<double>(1)[1] = 1.0;
-    mIntrinsic.ptr<double>(2)[2] = 1.0;
+    mIntrinsic =  cv::Mat(3, 3, CV_32F );
+    mIntrinsic.ptr<float>(0)[0] = 1.0;
+    mIntrinsic.ptr<float>(1)[1] = 1.0;
+    mIntrinsic.ptr<float>(2)[2] = 1.0;
 
     mCoeffReady = false;
 }
 
-
-void QFisheyeUndistort::addCorners(vector<cv::Point2d>& img_corners, vector<cv::Point3d>& obj_corners, cv::Size imgSize )
+void QFisheyeUndistort::addCorners(vector<cv::Point2f>& img_corners, vector<cv::Point3f>& obj_corners, cv::Size imgSize )
 {
     mMutex.lock();
     mObjCorners.push_back( obj_corners);

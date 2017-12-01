@@ -61,6 +61,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    killGstLaunch();
+
     while( mGstProcess.state() == QProcess::Running )
     {
         mGstProcess.kill();
@@ -124,11 +126,21 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
     if( index>mCameras.size()-1  )
         return;
 
-    ui->label_camera->setText( static_cast<QCameraInfo>(mCameras.at(index)).description() );
+    if( index<0 )
+    {
+        ui->label_camera->setText( tr("No camera info") );
+    }
+    else
+    {
+        ui->label_camera->setText( static_cast<QCameraInfo>(mCameras.at(index)).description() );
+    }
 }
 
 bool MainWindow::startCamera()
 {
+    if(!killGstLaunch())
+        return false;
+
     if(!startGstProcess())
         return false;
 
@@ -220,6 +232,8 @@ void MainWindow::onNewImage( cv::Mat frame )
 void MainWindow::onNewCbImage(cv::Mat cbImage)
 {
     mCameraSceneCheckboard->setFgImage(cbImage);
+
+    ui->lineEdit__chessboard_count->setText( tr("%1").arg(mFisheyeUndist->getCbCount()) );
 }
 
 void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
@@ -233,7 +247,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         mCbSize.width = ui->lineEdit_chessboard_cols->text().toInt();
         mCbSize.height = ui->lineEdit__chessboard_rows->text().toInt();
-        mCbSizeMm = ui->lineEdit__chessboard_mm->text().toDouble();
+        mCbSizeMm = ui->lineEdit__chessboard_mm->text().toFloat();
 
         if(mFisheyeUndist)
         {
@@ -271,17 +285,13 @@ void MainWindow::onProcessReadyRead()
     }
 }
 
-bool MainWindow::startGstProcess( )
+bool MainWindow::killGstLaunch( )
 {
-    if( mCamDev.size()==0 )
-        return false;
-
     // >>>>> Kill gst-launch-1.0 processes
     QProcess killer;
     QProcess checker;
 
     int count = 0;
-
     bool done = false;
     do
     {
@@ -297,12 +307,20 @@ bool MainWindow::startGstProcess( )
         if( count==10 )
         {
             qDebug() << tr("Cannot kill gst-launch active process(es)" );
-            // TODO add error message
-            break;
+
+            return false;
         }
 
     } while( !done );
     // <<<<< Kill gst-launch-1.0 processes
+
+    return true;
+}
+
+bool MainWindow::startGstProcess( )
+{
+    if( mCamDev.size()==0 )
+        return false;
 
     QString launchStr;
 

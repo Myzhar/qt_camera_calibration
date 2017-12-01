@@ -14,10 +14,10 @@ class QChessboardElab : public QObject, public QRunnable
     Q_OBJECT
 
 public:
-    QChessboardElab(MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, double cbSizeMm  , QFisheyeUndistort *fisheyeUndist);
+    QChessboardElab(MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm  , QFisheyeUndistort *fisheyeUndist);
     virtual ~QChessboardElab();
 
-    virtual void run();
+    virtual void run() Q_DECL_OVERRIDE;
 
 signals:
     void newCbImage( cv::Mat cbImage );
@@ -25,11 +25,10 @@ signals:
 private:
     cv::Mat mFrame;
     cv::Size mCbSize;
-    double mCbSizeMm;
+    float mCbSizeMm;
 
     MainWindow* mMainWnd;
     QFisheyeUndistort* mFisheyeUndist;
-
 };
 
 #endif // QCHESSBOARDELAB_H

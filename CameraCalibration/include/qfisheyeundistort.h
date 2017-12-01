@@ -15,17 +15,18 @@ public:
 
     cv::Mat undistort(cv::Mat raw);
 
+    size_t getCbCount(){ return mImgCorners.size(); }
 
 signals:
 
 public slots:
-    void addCorners(std::vector<cv::Point2d> &img_corners , std::vector<cv::Point3d> &obj_corners , cv::Size imgSize);
+    void addCorners(std::vector<cv::Point2f> &img_corners , std::vector<cv::Point3f> &obj_corners , cv::Size imgSize);    
 
 private:
     QMutex mMutex;
 
-    std::vector< std::vector<cv::Point2d> > mImgCorners;
-    std::vector< std::vector<cv::Point3d> > mObjCorners;
+    std::vector< std::vector<cv::Point2f> > mImgCorners;
+    std::vector< std::vector<cv::Point3f> > mObjCorners;
 
     cv::Mat mIntrinsic;
     cv::Mat mDistCoeffs;

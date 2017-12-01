@@ -30,6 +30,7 @@ protected:
     QString updateOpenCvVer();
     QStringList updateCameraInfo();
     bool startGstProcess();
+    bool killGstLaunch();
     bool startCamera();
     void stopCamera();
 
@@ -72,7 +73,7 @@ private:
     int mSrcFps;
 
     cv::Size mCbSize;
-    double mCbSizeMm;
+    float mCbSizeMm;
 
     QThreadPool mElabPool;
 

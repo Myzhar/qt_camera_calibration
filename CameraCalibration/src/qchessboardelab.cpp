@@ -9,7 +9,7 @@
 
 using namespace std;
 
-QChessboardElab::QChessboardElab( MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, double cbSizeMm, QFisheyeUndistort* fisheyeUndist  )
+QChessboardElab::QChessboardElab( MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QFisheyeUndistort* fisheyeUndist  )
     : QObject(NULL)
 {
     mFrame = frame;
@@ -35,7 +35,7 @@ void QChessboardElab::run()
 
     // >>>>> Chessboard detection
     cv::cvtColor( mFrame, gray,  CV_BGR2GRAY );
-    vector<cv::Point2d> corners; //this will be filled by the detected corners
+    vector<cv::Point2f> corners; //this will be filled by the detected corners
 
     //CALIB_CB_FAST_CHECK saves a lot of time on images
     //that do not contain any chessboard corners
@@ -50,12 +50,12 @@ void QChessboardElab::run()
 
         cv::drawChessboardCorners( mFrame, mCbSize, cv::Mat(corners), found );
 
-        vector<cv::Point3d> obj;
+        vector<cv::Point3f> obj;
 
         int numSquares = mCbSize.width*mCbSize.height;
         for(int j=0;j<numSquares;j++)
         {
-            obj.push_back(cv::Point3d((j/mCbSize.width)*mCbSizeMm, (j%mCbSize.width)*mCbSizeMm, 0.0f));
+            obj.push_back(cv::Point3f((j/mCbSize.width)*mCbSizeMm, (j%mCbSize.width)*mCbSizeMm, 0.0f));
         }
 
         mFisheyeUndist->addCorners( corners, obj, mFrame.size() );
