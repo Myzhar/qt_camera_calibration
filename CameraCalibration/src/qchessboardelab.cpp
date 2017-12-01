@@ -58,7 +58,7 @@ void QChessboardElab::run()
             obj.push_back(cv::Point3f((j/mCbSize.width)*mCbSizeMm, (j%mCbSize.width)*mCbSizeMm, 0.0f));
         }
 
-        mFisheyeUndist->addCorners( corners, obj, mFrame.size() );
+        mFisheyeUndist->addCorners( corners );
     }
     // <<<<< Chessboard detection
 

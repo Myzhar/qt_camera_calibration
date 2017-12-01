@@ -28,6 +28,8 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    killGstLaunch();
+
     mCameraConnected = false;
 
     updateOpenCvVer();
@@ -192,7 +194,7 @@ void MainWindow::onCameraDisconnected()
 
 void MainWindow::onNewImage( cv::Mat frame )
 {
-
+    static int frmCnt=0;
     static int frameW = 0;
     static int frameH = 0;
 
@@ -211,9 +213,16 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     mCameraSceneRaw->setFgImage(frame);
 
-    QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mFisheyeUndist );
-    //mElabPool.start( elab );
-    mElabPool.tryStart(elab);
+    frmCnt++;
+
+    int fps = ui->lineEdit_camera_fps->text().toInt();
+
+    if( frmCnt%fps == 0 )
+    {
+        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mFisheyeUndist );
+        //mElabPool.start( elab );
+        mElabPool.tryStart(elab);
+    }
 
     cv::Mat rectified = mFisheyeUndist->undistort( frame );
 
@@ -254,7 +263,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
             delete mFisheyeUndist;
         }
 
-        mFisheyeUndist = new QFisheyeUndistort();
+        mFisheyeUndist = new QFisheyeUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm );
 
         if( startCamera() )
         {
@@ -357,4 +366,29 @@ bool MainWindow::startGstProcess( )
     }
 
     return true;
+}
+
+void MainWindow::on_pushButton_load_params_clicked()
+{
+
+}
+
+void MainWindow::on_pushButton_save_params_clicked()
+{
+
+}
+
+void MainWindow::on_lineEdit_chessboard_cols_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit__chessboard_rows_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit__chessboard_mm_editingFinished()
+{
+
 }

@@ -50,6 +50,16 @@ private slots:
 
     void on_pushButton_camera_connect_disconnect_clicked(bool checked);
 
+    void on_pushButton_load_params_clicked();
+
+    void on_pushButton_save_params_clicked();
+
+    void on_lineEdit_chessboard_cols_editingFinished();
+
+    void on_lineEdit__chessboard_rows_editingFinished();
+
+    void on_lineEdit__chessboard_mm_editingFinished();
+
 private:
     Ui::MainWindow *ui;
 
