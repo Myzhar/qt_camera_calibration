@@ -17,10 +17,13 @@ public:
 
     size_t getCbCount(){ return mImgCornersVec.size(); }
 
+    void getCameraParams(cv::Mat& K, cv::Mat& D){K=mIntrinsic;D=mDistCoeffs;}
+
 protected:
-    void create3DChessboardCorners(cv::Size boardSize, float squareSize);
+    void create3DChessboardCorners(cv::Size boardSize, double squareSize);
 
 signals:
+    void newCameraParams(cv::Mat K, cv::Mat D, bool refined );
 
 public slots:
     void addCorners(std::vector<cv::Point2f> &img_corners );
@@ -33,10 +36,16 @@ private:
 
     std::vector<cv::Point3f> mDefObjCorners;
 
+    int mCalibFlags;
+
     cv::Mat mIntrinsic;
     cv::Mat mDistCoeffs;
 
+    cv::Mat mRemap1;
+    cv::Mat mRemap2;
+
     bool mCoeffReady;
+    bool mRefined;
 
     cv::Size mImgSize;
     cv::Size mCbSize;

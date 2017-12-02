@@ -295,7 +295,7 @@ cv::Mat GstSinkOpenCV::getLastFrame()
     cv::Mat frame;
 
     mFrameMutex.lock();
-    frame = mFrameBuffer.dequeue().clone();
+    frame = mFrameBuffer.dequeue()/*.clone()*/;
     mFrameMutex.unlock();
 
     return frame;

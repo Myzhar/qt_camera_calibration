@@ -40,6 +40,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->statusBar->addPermanentWidget( &mOpenCvVer );
     // <<<<< OpenCV version
 
+    // >>>>> Calibration INFO
+    ui->statusBar->addWidget( &mCalibInfo );
+    // <<<<< Calibration INFO
+
     on_pushButton_update_camera_list_clicked();
 
     // >>>>> Stream rendering
@@ -217,7 +221,7 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     int fps = ui->lineEdit_camera_fps->text().toInt();
 
-    if( frmCnt%fps == 0 )
+    if( ui->pushButton_calibrate->isChecked() && frmCnt%fps == 0 )
     {
         QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mFisheyeUndist );
         //mElabPool.start( elab );
@@ -237,12 +241,28 @@ void MainWindow::onNewImage( cv::Mat frame )
 
 }
 
-
 void MainWindow::onNewCbImage(cv::Mat cbImage)
 {
     mCameraSceneCheckboard->setFgImage(cbImage);
 
     ui->lineEdit__chessboard_count->setText( tr("%1").arg(mFisheyeUndist->getCbCount()) );
+}
+
+void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining )
+{
+    mIntrinsic = K;
+    mDistorsion = D;
+
+    if( refining )
+    {
+        mCalibInfo.setText( tr("Refining existing Camera parameters") );
+    }
+    else
+    {
+        mCalibInfo.setText( tr("Estimating new Camera parameters") );
+    }
+
+    updateParamGUI();
 }
 
 void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
@@ -261,9 +281,18 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         if(mFisheyeUndist)
         {
             delete mFisheyeUndist;
+
+            disconnect( mFisheyeUndist, &QFisheyeUndistort::newCameraParams,
+                     this, &MainWindow::onNewCameraParams );
         }
 
         mFisheyeUndist = new QFisheyeUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm );
+
+        connect( mFisheyeUndist, &QFisheyeUndistort::newCameraParams,
+                 this, &MainWindow::onNewCameraParams );
+
+        mFisheyeUndist->getCameraParams( mIntrinsic, mDistorsion );
+        updateParamGUI();
 
         if( startCamera() )
         {
@@ -366,6 +395,64 @@ bool MainWindow::startGstProcess( )
     }
 
     return true;
+}
+
+void MainWindow::updateParamGUI()
+{
+    double fx = mIntrinsic.ptr<double>(0)[0];
+    double fy = mIntrinsic.ptr<double>(1)[1];
+    double cx = mIntrinsic.ptr<double>(0)[2];
+    double cy = mIntrinsic.ptr<double>(1)[2];
+    double scale = mIntrinsic.ptr<double>(2)[2];
+
+    ui->lineEdit_fx->setText( tr("%1").arg(fx) );
+    ui->lineEdit_fy->setText( tr("%1").arg(fy) );
+    ui->lineEdit_cx->setText( tr("%1").arg(cx) );
+    ui->lineEdit_cy->setText( tr("%1").arg(cy) );
+    ui->lineEdit_scale->setText( tr("%1").arg(scale) );
+
+    double k1 = mDistorsion.ptr<double>(0)[0];
+    double k2 = mDistorsion.ptr<double>(1)[0];
+
+    if( ui->checkBox_fisheye->isChecked() )
+    {
+        double k3 = mDistorsion.ptr<double>(2)[0];
+        double k4 = mDistorsion.ptr<double>(3)[0];
+
+        ui->lineEdit_k1->setText( tr("%1").arg(k1) );
+        ui->lineEdit_k2->setText( tr("%1").arg(k2) );
+        ui->lineEdit_k3->setText( tr("%1").arg(k3) );
+        ui->lineEdit_k4->setText( tr("%1").arg(k4) );
+
+        ui->lineEdit_k5->setVisible(false);
+        ui->lineEdit_k6->setVisible(false);
+        ui->lineEdit_p1->setVisible(false);
+        ui->lineEdit_p2->setVisible(false);
+    }
+    else
+    {
+        double p1 = mDistorsion.ptr<double>(2)[0];
+        double p2 = mDistorsion.ptr<double>(3)[0];
+
+        double k3 = mDistorsion.ptr<double>(4)[0];
+        double k4 = mDistorsion.ptr<double>(5)[0];
+        double k5 = mDistorsion.ptr<double>(6)[0];
+        double k6 = mDistorsion.ptr<double>(7)[0];
+
+        ui->lineEdit_k1->setText( tr("%1").arg(k1) );
+        ui->lineEdit_k2->setText( tr("%1").arg(k2) );
+        ui->lineEdit_p1->setText( tr("%1").arg(p1) );
+        ui->lineEdit_p2->setText( tr("%1").arg(p2) );
+        ui->lineEdit_k3->setText( tr("%1").arg(k3) );
+        ui->lineEdit_k4->setText( tr("%1").arg(k4) );
+        ui->lineEdit_k5->setText( tr("%1").arg(k5) );
+        ui->lineEdit_k6->setText( tr("%1").arg(k6) );
+
+        ui->lineEdit_k5->setVisible(true);
+        ui->lineEdit_k6->setVisible(true);
+        ui->lineEdit_p1->setVisible(true);
+        ui->lineEdit_p2->setVisible(true);
+    }
 }
 
 void MainWindow::on_pushButton_load_params_clicked()
