@@ -35,12 +35,16 @@ void QFisheyeUndistort::addCorners(vector<cv::Point2f>& img_corners)
     mObjCornersVec.push_back( mDefObjCorners );
     mImgCornersVec.push_back( img_corners );
 
-    if( mObjCornersVec.size() > 5)
+    if( mObjCornersVec.size() >= 15)
     {
         vector<cv::Mat> rvecs;
         vector<cv::Mat> tvecs;
 
         int flags = 0;
+        if( mObjCornersVec.size() > 15)
+        {
+            flags |= cv::fisheye::CALIB_USE_INTRINSIC_GUESS;
+        }
         flags |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
         flags |= cv::fisheye::CALIB_CHECK_COND;
         flags |= cv::fisheye::CALIB_FIX_SKEW;
@@ -63,12 +67,12 @@ cv::Mat QFisheyeUndistort::undistort(cv::Mat raw)
 
     cv::Mat identity = cv::Mat::eye(3, 3, CV_32F);
 
-    //mMutex.lock();
+    mMutex.lock();
 
     cv::Mat res;
     cv::fisheye::undistortImage( raw, res, mIntrinsic, mDistCoeffs, identity );
 
-    //mMutex.unlock();
+    mMutex.unlock();
 
     return res;
 }
