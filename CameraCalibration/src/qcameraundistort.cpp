@@ -49,7 +49,7 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
 {
     mMutex.lock();
 
-    if( mObjCornersVec.size() == 15 )
+    if( mObjCornersVec.size() == 10 )
     {
         mObjCornersVec.clear();
         mImgCornersVec.clear();
@@ -67,11 +67,13 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
 
         if(mFishEye)
         {
+            // >>>>> Calibration flags
             mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
             if( mRefined )
             {
                 mCalibFlags |= cv::fisheye::CALIB_USE_INTRINSIC_GUESS;
             }
+            // <<<<< Calibration flags
 
             // >>>>> FishEye model wants only 4 distorsion parameters
             cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
@@ -81,7 +83,8 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
             feDist.ptr<double>(3)[0] = mDistCoeffs.ptr<double>(3)[0];
             // <<<<< FishEye model wants only 4 distorsion parameters
 
-            mReprojErr = cv::fisheye::calibrate( mObjCornersVec, mImgCornersVec, mImgSize, mIntrinsic, feDist, rvecs, tvecs, mCalibFlags );
+            mReprojErr = cv::fisheye::calibrate( mObjCornersVec, mImgCornersVec, mImgSize,
+                                                 mIntrinsic, feDist, rvecs, tvecs, mCalibFlags );
 
             // >>>>> Update class distorsion matrix
             mDistCoeffs.ptr<double>(0)[0] = feDist.ptr<double>(0)[0];
@@ -90,22 +93,25 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
             mDistCoeffs.ptr<double>(3)[0] = feDist.ptr<double>(3)[0];
             // <<<<< Update class distorsion matrix
 
-            cout << "Intrinsic before initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
+            //cout << "Intrinsic before initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
 
             cv::fisheye::initUndistortRectifyMap( mIntrinsic, feDist, cv::Matx33f::eye(),
                                                   mIntrinsic, mImgSize, CV_16SC2, mRemap1, mRemap2  );
         }
         else
         {
-            mCalibFlags = CV_CALIB_RATIONAL_MODEL;
+            // >>>>> Calibration flags
+            mCalibFlags = CV_CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters            
             if( mRefined )
             {
                 mCalibFlags |= CV_CALIB_USE_INTRINSIC_GUESS;
             }
+            // <<<<< Calibration flags
 
-            mReprojErr = cv::calibrateCamera( mObjCornersVec, mImgCornersVec, mImgSize, mIntrinsic, mDistCoeffs, rvecs, tvecs, mCalibFlags );
+            mReprojErr = cv::calibrateCamera( mObjCornersVec, mImgCornersVec, mImgSize,
+                                              mIntrinsic, mDistCoeffs, rvecs, tvecs, mCalibFlags );
 
-            cout << "Intrinsic before initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
+            //cout << "Intrinsic before initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
 
             cv::initUndistortRectifyMap( mIntrinsic, mDistCoeffs, cv::Matx33f::eye(),
                                                   mIntrinsic, mImgSize, CV_16SC2, mRemap1, mRemap2  );
@@ -113,9 +119,9 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
 
         //cv::Mat opt = cv::getOptimalNewCameraMatrix( mIntrinsic, mDistCoeffs, mImgSize, 1.0 );        
 
-        cout << "Intrinsic after initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
+        //cout << "Intrinsic after initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
 
-        emit newCameraParams( mIntrinsic, mDistCoeffs, mRefined );
+        emit newCameraParams( mIntrinsic, mDistCoeffs, mRefined, mReprojErr );
 
         mCoeffReady = true;
     }

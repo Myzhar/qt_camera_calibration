@@ -63,6 +63,15 @@ MainWindow::MainWindow(QWidget *parent) :
     // <<<<< Stream rendering
 
     mElabPool.setMaxThreadCount( 3 );
+
+    mIntrinsic =  cv::Mat(3, 3, CV_64F, cv::Scalar::all(0.0f) );
+    mIntrinsic.ptr<double>(0)[0] = 884.0;
+    mIntrinsic.ptr<double>(1)[1] = 884.0;
+    mIntrinsic.ptr<double>(2)[2] = 1.0;
+    mIntrinsic.ptr<double>(0)[2] = ui->lineEdit_camera_w->text().toDouble()/2.0;
+    mIntrinsic.ptr<double>(1)[2] = ui->lineEdit_camera_h->text().toDouble()/2.0;
+
+    mDistorsion = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
 }
 
 MainWindow::~MainWindow()
@@ -224,7 +233,6 @@ void MainWindow::onNewImage( cv::Mat frame )
     if( ui->pushButton_calibrate->isChecked() && frmCnt%fps == 0 )
     {
         QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraUndist );
-        //mElabPool.start( elab );
         mElabPool.tryStart(elab);
     }
 
@@ -245,10 +253,10 @@ void MainWindow::onNewCbImage(cv::Mat cbImage)
 {
     mCameraSceneCheckboard->setFgImage(cbImage);
 
-    ui->lineEdit__chessboard_count->setText( tr("%1").arg(mCameraUndist->getCbCount()) );
+    ui->lineEdit_cb_count->setText( tr("%1").arg(mCameraUndist->getCbCount()) );
 }
 
-void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining )
+void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining , double calibReprojErr)
 {
     mIntrinsic = K;
     mDistorsion = D;
@@ -262,6 +270,22 @@ void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining )
         mCalibInfo.setText( tr("Estimating new Camera parameters") );
     }
 
+    ui->lineEdit_calib_reproj_err->setText(tr("%1").arg(calibReprojErr));
+
+    if(calibReprojErr<=0.5 )
+    {
+        ui->lineEdit_calib_reproj_err->setStyleSheet("QLineEdit { background: rgb(50, 250, 50);}");
+    }
+    else if(calibReprojErr<=1.0 && calibReprojErr>0.5)
+    {
+        ui->lineEdit_calib_reproj_err->setStyleSheet("QLineEdit { background: rgb(250, 250, 50);}");
+    }
+    else
+    {
+        ui->lineEdit_calib_reproj_err->setStyleSheet("QLineEdit { background: rgb(250, 50, 50);}");
+    }
+
+
     updateParamGUI();
 }
 
@@ -274,9 +298,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         mSrcHeight = ui->lineEdit_camera_h->text().toInt();
         mSrcFps = ui->lineEdit_camera_fps->text().toInt();
 
-        mCbSize.width = ui->lineEdit_chessboard_cols->text().toInt();
-        mCbSize.height = ui->lineEdit__chessboard_rows->text().toInt();
-        mCbSizeMm = ui->lineEdit__chessboard_mm->text().toFloat();
+        updateCbParams();
 
         if(mCameraUndist)
         {
@@ -300,17 +322,29 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         if( startCamera() )
         {
             ui->pushButton_camera_connect_disconnect->setText( tr("Stop Camera") );
+
+            ui->lineEdit_cb_cols->setEnabled(false);
+            ui->lineEdit_cb_rows->setEnabled(false);
+            ui->lineEdit_cb_mm->setEnabled(false);
         }
         else
         {
             ui->pushButton_camera_connect_disconnect->setText( tr("Start Camera") );
             ui->pushButton_camera_connect_disconnect->setChecked(false);
+
+            ui->lineEdit_cb_cols->setEnabled(true);
+            ui->lineEdit_cb_rows->setEnabled(true);
+            ui->lineEdit_cb_mm->setEnabled(true);
         }
     }
     else
     {
         ui->pushButton_camera_connect_disconnect->setText( tr("Start Camera") );
         stopCamera();
+
+        ui->lineEdit_cb_cols->setEnabled(true);
+        ui->lineEdit_cb_rows->setEnabled(true);
+        ui->lineEdit_cb_mm->setEnabled(true);
     }
 }
 
@@ -400,6 +434,13 @@ bool MainWindow::startGstProcess( )
     return true;
 }
 
+void MainWindow::updateCbParams()
+{
+    mCbSize.width = ui->lineEdit_cb_cols->text().toInt();
+    mCbSize.height = ui->lineEdit_cb_rows->text().toInt();
+    mCbSizeMm = ui->lineEdit_cb_mm->text().toFloat();
+}
+
 void MainWindow::updateParamGUI()
 {
     double fx = mIntrinsic.ptr<double>(0)[0];
@@ -458,6 +499,96 @@ void MainWindow::updateParamGUI()
     }
 }
 
+void MainWindow::on_lineEdit_fx_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_K_01_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_cx_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit__K_10_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_fy_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_cy_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_20_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_21_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_scale_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_k1_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_k2_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_k3_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_k4_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_k5_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_k6_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_p1_editingFinished()
+{
+
+}
+
+void MainWindow::on_lineEdit_p2_editingFinished()
+{
+
+}
+
+void MainWindow::on_pushButton_calibrate_clicked(bool checked)
+{
+    ui->groupBox_params->setEnabled(!checked);
+}
+
 void MainWindow::on_pushButton_load_params_clicked()
 {
 
@@ -468,17 +599,7 @@ void MainWindow::on_pushButton_save_params_clicked()
 
 }
 
-void MainWindow::on_lineEdit_chessboard_cols_editingFinished()
+void MainWindow::on_checkBox_fisheye_clicked()
 {
-
-}
-
-void MainWindow::on_lineEdit__chessboard_rows_editingFinished()
-{
-
-}
-
-void MainWindow::on_lineEdit__chessboard_mm_editingFinished()
-{
-
+    updateParamGUI();
 }

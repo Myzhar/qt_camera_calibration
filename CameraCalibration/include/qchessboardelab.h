@@ -14,13 +14,14 @@ class QChessboardElab : public QObject, public QRunnable
     Q_OBJECT
 
 public:
-    QChessboardElab(MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm  , QCameraUndistort *fisheyeUndist);
+    QChessboardElab(MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QCameraUndistort *fisheyeUndist);
     virtual ~QChessboardElab();
 
     virtual void run() Q_DECL_OVERRIDE;
 
 signals:
     void newCbImage( cv::Mat cbImage );
+
 
 private:
     cv::Mat mFrame;

@@ -37,7 +37,7 @@ protected:
 public slots:
     void onNewImage(cv::Mat frame);
     void onNewCbImage(cv::Mat cbImage);
-    void onNewCameraParams(cv::Mat K, cv::Mat D, bool refining);
+    void onNewCameraParams(cv::Mat K, cv::Mat D, bool refining, double calibReprojErr );
 
 protected slots:
     void onCameraConnected();
@@ -45,16 +45,37 @@ protected slots:
     void onProcessReadyRead();
 
     void updateParamGUI();
+    void updateCbParams();
 
 private slots:
     void on_pushButton_update_camera_list_clicked();
     void on_comboBox_camera_currentIndexChanged(int index);
     void on_pushButton_camera_connect_disconnect_clicked(bool checked);
+
+    void on_lineEdit_fx_editingFinished();
+    void on_lineEdit_K_01_editingFinished();
+    void on_lineEdit_cx_editingFinished();
+    void on_lineEdit__K_10_editingFinished();
+    void on_lineEdit_fy_editingFinished();
+    void on_lineEdit_cy_editingFinished();
+    void on_lineEdit_20_editingFinished();
+    void on_lineEdit_21_editingFinished();
+    void on_lineEdit_scale_editingFinished();
+    void on_lineEdit_k1_editingFinished();
+    void on_lineEdit_k2_editingFinished();
+    void on_lineEdit_k3_editingFinished();
+    void on_lineEdit_k4_editingFinished();
+    void on_lineEdit_k5_editingFinished();
+    void on_lineEdit_k6_editingFinished();
+    void on_lineEdit_p1_editingFinished();
+    void on_lineEdit_p2_editingFinished();
+
+    void on_pushButton_calibrate_clicked(bool checked);
+
     void on_pushButton_load_params_clicked();
     void on_pushButton_save_params_clicked();
-    void on_lineEdit_chessboard_cols_editingFinished();
-    void on_lineEdit__chessboard_rows_editingFinished();
-    void on_lineEdit__chessboard_mm_editingFinished();
+
+    void on_checkBox_fisheye_clicked();
 
 private:
     Ui::MainWindow *ui;
