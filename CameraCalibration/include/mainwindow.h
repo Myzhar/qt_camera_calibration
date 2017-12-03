@@ -12,7 +12,7 @@
 class CameraThread;
 class QOpenCVScene;
 
-class QFisheyeUndistort;
+class QCameraUndistort;
 
 namespace Ui {
 class MainWindow;
@@ -86,7 +86,7 @@ private:
 
     QThreadPool mElabPool;
 
-    QFisheyeUndistort* mFisheyeUndist;
+    QCameraUndistort* mFisheyeUndist;
 };
 
 #endif // MAINWINDOW_H

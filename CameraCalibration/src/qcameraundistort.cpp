@@ -1,5 +1,7 @@
 #include "qfisheyeundistort.h"
 
+#include <QtGlobal>
+
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -15,6 +17,8 @@ QFisheyeUndistort::QFisheyeUndistort(cv::Size imgSize, cv::Size cbSize, float cb
     mCbSquareSizeMm = cbSquareSizeMm;
 
     mRefined = false;
+
+    mReprojErr = NAN;
 
     mIntrinsic =  cv::Mat(3, 3, CV_64F, cv::Scalar::all(0.0f) );
     mIntrinsic.ptr<double>(0)[0] = 884.0;

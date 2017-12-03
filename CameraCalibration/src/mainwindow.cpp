@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "qchessboardelab.h"
-#include "qfisheyeundistort.h"
+#include "qcameraundistort.h"
 
 using namespace std;
 
@@ -282,13 +282,13 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         {
             delete mFisheyeUndist;
 
-            disconnect( mFisheyeUndist, &QFisheyeUndistort::newCameraParams,
+            disconnect( mFisheyeUndist, &QCameraUndistort::newCameraParams,
                      this, &MainWindow::onNewCameraParams );
         }
 
-        mFisheyeUndist = new QFisheyeUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm );
+        mFisheyeUndist = new QCameraUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm );
 
-        connect( mFisheyeUndist, &QFisheyeUndistort::newCameraParams,
+        connect( mFisheyeUndist, &QCameraUndistort::newCameraParams,
                  this, &MainWindow::onNewCameraParams );
 
         mFisheyeUndist->getCameraParams( mIntrinsic, mDistorsion );

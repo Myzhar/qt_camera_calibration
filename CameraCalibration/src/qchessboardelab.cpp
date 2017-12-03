@@ -5,11 +5,11 @@
 
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include "qfisheyeundistort.h"
+#include "qcameraundistort.h"
 
 using namespace std;
 
-QChessboardElab::QChessboardElab( MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QFisheyeUndistort* fisheyeUndist  )
+QChessboardElab::QChessboardElab( MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QCameraUndistort* fisheyeUndist  )
     : QObject(NULL)
 {
     mFrame = frame;

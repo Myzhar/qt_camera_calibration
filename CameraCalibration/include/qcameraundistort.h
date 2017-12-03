@@ -50,6 +50,8 @@ private:
     cv::Size mImgSize;
     cv::Size mCbSize;
     float mCbSquareSizeMm;
+
+    double mReprojErr;
 };
 
 #endif // QFISHEYEUNDISTORT_H

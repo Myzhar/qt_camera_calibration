@@ -22,12 +22,12 @@ SOURCES += \
     src/main.cpp\
     src/mainwindow.cpp \
     src/qchessboardelab.cpp \
-    src/qfisheyeundistort.cpp
+    src/qcameraundistort.cpp
 
 HEADERS  += \
     include/mainwindow.h \
     include/qchessboardelab.h \
-    include/qfisheyeundistort.h
+    include/qcameraundistort.h
 
 FORMS    += \
             forms/mainwindow.ui
