@@ -1,4 +1,4 @@
-#include "qfisheyeundistort.h"
+#include "qcameraundistort.h"
 
 #include <QtGlobal>
 
@@ -9,12 +9,14 @@
 
 using namespace std;
 
-QFisheyeUndistort::QFisheyeUndistort(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, QObject *parent)
+QCameraUndistort::QCameraUndistort(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye, QObject *parent)
     : QObject(parent)
 {
     mImgSize = imgSize;
     mCbSize = cbSize;
     mCbSquareSizeMm = cbSquareSizeMm;
+
+    mFishEye = fishEye;
 
     mRefined = false;
 
@@ -27,16 +29,23 @@ QFisheyeUndistort::QFisheyeUndistort(cv::Size imgSize, cv::Size cbSize, float cb
     mIntrinsic.ptr<double>(0)[2] = (double)imgSize.width/2.0;
     mIntrinsic.ptr<double>(1)[2] = (double)imgSize.height/2.0;
 
-    mDistCoeffs = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
-
-    mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
+    mDistCoeffs = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
 
     mCoeffReady = false;
 
     create3DChessboardCorners( mCbSize, mCbSquareSizeMm );
 }
 
-void QFisheyeUndistort::addCorners(vector<cv::Point2f>& img_corners)
+void QCameraUndistort::setCameraParams(cv::Mat& K, cv::Mat& D)
+{
+    mIntrinsic=K;
+    mDistCoeffs=D;
+
+    mRefined=true;      // Initial guess is set, so we want to refine the calibration values
+    mCoeffReady=true;
+}
+
+void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
 {
     mMutex.lock();
 
@@ -45,7 +54,6 @@ void QFisheyeUndistort::addCorners(vector<cv::Point2f>& img_corners)
         mObjCornersVec.clear();
         mImgCornersVec.clear();
 
-        mCalibFlags |= cv::fisheye::CALIB_USE_INTRINSIC_GUESS;
         mRefined = true;
     }
 
@@ -57,12 +65,55 @@ void QFisheyeUndistort::addCorners(vector<cv::Point2f>& img_corners)
         vector<cv::Mat> rvecs;
         vector<cv::Mat> tvecs;
 
-        cv::fisheye::calibrate( mObjCornersVec, mImgCornersVec, mImgSize, mIntrinsic, mDistCoeffs, rvecs, tvecs, mCalibFlags );
+        if(mFishEye)
+        {
+            mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
+            if( mRefined )
+            {
+                mCalibFlags |= cv::fisheye::CALIB_USE_INTRINSIC_GUESS;
+            }
 
-        //cv::Mat opt = cv::getOptimalNewCameraMatrix( mIntrinsic, mDistCoeffs, mImgSize, 1.0 );
+            // >>>>> FishEye model wants only 4 distorsion parameters
+            cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
+            feDist.ptr<double>(0)[0] = mDistCoeffs.ptr<double>(0)[0];
+            feDist.ptr<double>(1)[0] = mDistCoeffs.ptr<double>(1)[0];
+            feDist.ptr<double>(2)[0] = mDistCoeffs.ptr<double>(2)[0];
+            feDist.ptr<double>(3)[0] = mDistCoeffs.ptr<double>(3)[0];
+            // <<<<< FishEye model wants only 4 distorsion parameters
 
-        cv::fisheye::initUndistortRectifyMap( mIntrinsic, mDistCoeffs, cv::Matx33f::eye(),
-                                              mIntrinsic, mImgSize, CV_16SC2, mRemap1, mRemap2  );
+            mReprojErr = cv::fisheye::calibrate( mObjCornersVec, mImgCornersVec, mImgSize, mIntrinsic, feDist, rvecs, tvecs, mCalibFlags );
+
+            // >>>>> Update class distorsion matrix
+            mDistCoeffs.ptr<double>(0)[0] = feDist.ptr<double>(0)[0];
+            mDistCoeffs.ptr<double>(1)[0] = feDist.ptr<double>(1)[0];
+            mDistCoeffs.ptr<double>(2)[0] = feDist.ptr<double>(2)[0];
+            mDistCoeffs.ptr<double>(3)[0] = feDist.ptr<double>(3)[0];
+            // <<<<< Update class distorsion matrix
+
+            cout << "Intrinsic before initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
+
+            cv::fisheye::initUndistortRectifyMap( mIntrinsic, feDist, cv::Matx33f::eye(),
+                                                  mIntrinsic, mImgSize, CV_16SC2, mRemap1, mRemap2  );
+        }
+        else
+        {
+            mCalibFlags = CV_CALIB_RATIONAL_MODEL;
+            if( mRefined )
+            {
+                mCalibFlags |= CV_CALIB_USE_INTRINSIC_GUESS;
+            }
+
+            mReprojErr = cv::calibrateCamera( mObjCornersVec, mImgCornersVec, mImgSize, mIntrinsic, mDistCoeffs, rvecs, tvecs, mCalibFlags );
+
+            cout << "Intrinsic before initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
+
+            cv::initUndistortRectifyMap( mIntrinsic, mDistCoeffs, cv::Matx33f::eye(),
+                                                  mIntrinsic, mImgSize, CV_16SC2, mRemap1, mRemap2  );
+        }
+
+        //cv::Mat opt = cv::getOptimalNewCameraMatrix( mIntrinsic, mDistCoeffs, mImgSize, 1.0 );        
+
+        cout << "Intrinsic after initUndistortRectifyMap: " << endl << mIntrinsic << endl << endl;
 
         emit newCameraParams( mIntrinsic, mDistCoeffs, mRefined );
 
@@ -72,7 +123,7 @@ void QFisheyeUndistort::addCorners(vector<cv::Point2f>& img_corners)
     mMutex.unlock();
 }
 
-cv::Mat QFisheyeUndistort::undistort(cv::Mat raw)
+cv::Mat QCameraUndistort::undistort(cv::Mat raw)
 {
     if(!mCoeffReady)
         return cv::Mat();
@@ -87,7 +138,7 @@ cv::Mat QFisheyeUndistort::undistort(cv::Mat raw)
     return res;
 }
 
-void QFisheyeUndistort::create3DChessboardCorners( cv::Size boardSize, double squareSize )
+void QCameraUndistort::create3DChessboardCorners( cv::Size boardSize, double squareSize )
 {
     // This function creates the 3D points of your chessboard in its own coordinate system
     double width = (boardSize.width-1)*squareSize;

@@ -86,7 +86,7 @@ private:
 
     QThreadPool mElabPool;
 
-    QCameraUndistort* mFisheyeUndist;
+    QCameraUndistort* mCameraUndist;
 };
 
 #endif // MAINWINDOW_H

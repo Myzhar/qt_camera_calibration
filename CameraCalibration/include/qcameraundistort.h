@@ -7,17 +7,18 @@
 
 #include <vector>
 
-class QFisheyeUndistort : public QObject
+class QCameraUndistort : public QObject
 {
     Q_OBJECT
 public:
-    explicit QFisheyeUndistort( cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, QObject *parent = nullptr );
+    explicit QCameraUndistort( cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye, QObject *parent = nullptr );
 
     cv::Mat undistort(cv::Mat raw);
 
     size_t getCbCount(){ return mImgCornersVec.size(); }
 
     void getCameraParams(cv::Mat& K, cv::Mat& D){K=mIntrinsic;D=mDistCoeffs;}
+    void setCameraParams(cv::Mat& K, cv::Mat& D);
 
 protected:
     void create3DChessboardCorners(cv::Size boardSize, double squareSize);
@@ -46,6 +47,7 @@ private:
 
     bool mCoeffReady;
     bool mRefined;
+    bool mFishEye;
 
     cv::Size mImgSize;
     cv::Size mCbSize;

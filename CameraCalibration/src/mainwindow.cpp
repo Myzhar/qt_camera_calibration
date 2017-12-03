@@ -24,7 +24,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mCameraSceneRaw(NULL),
     mCameraSceneCheckboard(NULL),
     mCameraSceneUndistorted(NULL),
-    mFisheyeUndist(NULL)
+    mCameraUndist(NULL)
 {
     ui->setupUi(this);
 
@@ -91,8 +91,8 @@ MainWindow::~MainWindow()
     if(mCameraSceneUndistorted)
         delete mCameraSceneUndistorted;
 
-    if(mFisheyeUndist)
-        delete mFisheyeUndist;
+    if(mCameraUndist)
+        delete mCameraUndist;
 }
 
 QString MainWindow::updateOpenCvVer()
@@ -223,12 +223,12 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     if( ui->pushButton_calibrate->isChecked() && frmCnt%fps == 0 )
     {
-        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mFisheyeUndist );
+        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraUndist );
         //mElabPool.start( elab );
         mElabPool.tryStart(elab);
     }
 
-    cv::Mat rectified = mFisheyeUndist->undistort( frame );
+    cv::Mat rectified = mCameraUndist->undistort( frame );
 
     if( rectified.empty() )
     {
@@ -245,7 +245,7 @@ void MainWindow::onNewCbImage(cv::Mat cbImage)
 {
     mCameraSceneCheckboard->setFgImage(cbImage);
 
-    ui->lineEdit__chessboard_count->setText( tr("%1").arg(mFisheyeUndist->getCbCount()) );
+    ui->lineEdit__chessboard_count->setText( tr("%1").arg(mCameraUndist->getCbCount()) );
 }
 
 void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining )
@@ -278,20 +278,23 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         mCbSize.height = ui->lineEdit__chessboard_rows->text().toInt();
         mCbSizeMm = ui->lineEdit__chessboard_mm->text().toFloat();
 
-        if(mFisheyeUndist)
+        if(mCameraUndist)
         {
-            delete mFisheyeUndist;
-
-            disconnect( mFisheyeUndist, &QCameraUndistort::newCameraParams,
+            disconnect( mCameraUndist, &QCameraUndistort::newCameraParams,
                      this, &MainWindow::onNewCameraParams );
+
+            delete mCameraUndist;
         }
 
-        mFisheyeUndist = new QCameraUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm );
+        bool fisheye = ui->checkBox_fisheye->isChecked();
 
-        connect( mFisheyeUndist, &QCameraUndistort::newCameraParams,
+        mCameraUndist = new QCameraUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
+
+        connect( mCameraUndist, &QCameraUndistort::newCameraParams,
                  this, &MainWindow::onNewCameraParams );
 
-        mFisheyeUndist->getCameraParams( mIntrinsic, mDistorsion );
+
+        mCameraUndist->getCameraParams( mIntrinsic, mDistorsion );
         updateParamGUI();
 
         if( startCamera() )
