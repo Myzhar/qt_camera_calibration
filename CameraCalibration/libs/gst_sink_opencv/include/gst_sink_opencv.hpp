@@ -4,14 +4,14 @@
 #include <opencv2/core/core.hpp>
 
 #include <mutex>
-#include <QQueue>
+#include <queue>
 
 #define FRAME_BUF_SIZE 5
 
 class GstSinkOpenCV
 {
 public:
-    static GstSinkOpenCV* Create(std::string input_pipeline, int bufSize = FRAME_BUF_SIZE, int timeout_sec=15, bool debug=false );
+    static GstSinkOpenCV* Create(std::string input_pipeline, size_t bufSize = FRAME_BUF_SIZE, int timeout_sec=15, bool debug=false );
     ~GstSinkOpenCV();
 
     cv::Mat getLastFrame();
@@ -26,13 +26,13 @@ private:
 protected:
 
 private:
-    int mFrameBufferSize;
+    size_t mFrameBufferSize;
     std::string mPipelineStr;
 
     GstElement* mPipeline;
     GstElement* mSink;
 
-    QQueue<cv::Mat> mFrameBuffer;
+    std::queue<cv::Mat> mFrameBuffer;
 
     int mWidth;
     int mHeight;

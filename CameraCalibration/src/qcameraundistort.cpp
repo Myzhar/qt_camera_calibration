@@ -65,8 +65,8 @@ void QCameraUndistort::setCameraParams( cv::Mat& K, cv::Mat& D, bool fishEye )
     mRefined=true;      // Initial guess is set, so we want to refine the calibration values
     mCoeffReady=true;
 
-    cout << "New K:" << endl << mIntrinsic << endl << endl;
-    cout << "New D:" << endl << mDistCoeffs << endl << endl;
+    //cout << "New K:" << endl << mIntrinsic << endl << endl;
+    //cout << "New D:" << endl << mDistCoeffs << endl << endl;
 }
 
 void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )

@@ -38,7 +38,7 @@ GstSinkOpenCV::~GstSinkOpenCV()
 
 }
 
-GstSinkOpenCV* GstSinkOpenCV::Create(string input_pipeline, int bufSize, int timeout_sec, bool debug )
+GstSinkOpenCV* GstSinkOpenCV::Create(string input_pipeline, size_t bufSize, int timeout_sec, bool debug )
 {
     GstSinkOpenCV* gstSinkOpencv = new GstSinkOpenCV( input_pipeline, bufSize, debug );
 
@@ -157,7 +157,7 @@ bool GstSinkOpenCV::init( int timeout_sec )
                 memcpy( frame.data, map.data, map.size );
 
                 mFrameMutex.lock();
-                mFrameBuffer.enqueue( frame );
+                mFrameBuffer.push( frame );
                 mFrameMutex.unlock();
 
                 if( mDebug )
@@ -257,7 +257,7 @@ GstFlowReturn GstSinkOpenCV::on_new_sample_from_sink( GstElement* elt, GstSinkOp
 
                 memcpy( frame.data, map.data, map.size );
 
-                sinkData->mFrameBuffer.enqueue( frame );
+                sinkData->mFrameBuffer.push( frame );
 
                 //std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
                 //std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() <<std::endl;
@@ -267,7 +267,13 @@ GstFlowReturn GstSinkOpenCV::on_new_sample_from_sink( GstElement* elt, GstSinkOp
                     cv::imshow( "New frame", frame );
                 }
             }
+            else
+            {
+                std::cout << "Buffer full" << endl;
+            }
             sinkData->mFrameMutex.unlock();
+
+
 
             gst_buffer_unmap (buffer, &map);
         }
@@ -299,7 +305,8 @@ cv::Mat GstSinkOpenCV::getLastFrame()
     cv::Mat frame;
 
     mFrameMutex.lock();
-    frame = mFrameBuffer.dequeue();
+    frame = mFrameBuffer.front();
+    mFrameBuffer.pop();
     mFrameMutex.unlock();
 
     return frame;

@@ -40,7 +40,7 @@ void CameraThread::run()
                            "rtph264depay ! h264parse ! avdec_h264";
 #endif
 
-    mImageSink = GstSinkOpenCV::Create( pipeline, 3000 );
+    mImageSink = GstSinkOpenCV::Create( pipeline, 10, 5 );
 
     if(!mImageSink)
     {
@@ -64,9 +64,13 @@ void CameraThread::run()
         if( !frame.empty() && !frame.rows==0 && !frame.cols==0 )
         {
             emit newImage( frame );
+            msleep( 1000.0/mFps );
+        }
+        else
+        {
+            msleep( 100.0/mFps );
         }
 
-        msleep( 1000.0/mFps );
     }
 
     if(mImageSink)
