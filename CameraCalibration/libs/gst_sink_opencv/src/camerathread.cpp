@@ -68,7 +68,7 @@ void CameraThread::run()
         }
         else
         {
-            msleep( 100.0/mFps );
+            msleep( 300.0/mFps );
         }
 
     }

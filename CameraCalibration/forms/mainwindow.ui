@@ -944,7 +944,7 @@ Reached 10 boards the
 counter resets and K and D
 are used as &quot;Initial Guess&quot;
 to refined the parameters
-just calculated.</string>
+just calculated or loaded.</string>
            </property>
           </widget>
          </item>

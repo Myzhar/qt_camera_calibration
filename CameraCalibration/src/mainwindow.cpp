@@ -6,6 +6,7 @@
 
 #include <QCameraInfo>
 #include <QGLWidget>
+#include <QFileDialog>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -525,8 +526,6 @@ void MainWindow::setNewCameraParams()
     mIntrinsic.ptr<double>(2)[1] = ui->lineEdit_K_21->text().toDouble();
     mIntrinsic.ptr<double>(2)[2] = ui->lineEdit_scale->text().toDouble();
 
-    cout << "Intrinsic edited: " << endl << mIntrinsic << endl << endl;
-
     mDistorsion.ptr<double>(0)[0] = ui->lineEdit_k1->text().toDouble();
     mDistorsion.ptr<double>(1)[0] = ui->lineEdit_k2->text().toDouble();
 
@@ -548,8 +547,6 @@ void MainWindow::setNewCameraParams()
         mDistorsion.ptr<double>(6)[0] = ui->lineEdit_k5->text().toDouble();
         mDistorsion.ptr<double>(7)[0] = ui->lineEdit_k6->text().toDouble();
     }
-
-    cout << "Distorsion edited: " << endl << mDistorsion << endl << endl;
 
     if( mCameraUndist )
     {
@@ -649,12 +646,83 @@ void MainWindow::on_pushButton_calibrate_clicked(bool checked)
 
 void MainWindow::on_pushButton_load_params_clicked()
 {
+    QString filter1 = tr("OpenCV YAML (*.yaml *.yml)");
+    QString filter2 = tr("XML (*.xml)");
 
+    QString fileName = QFileDialog::getOpenFileName(this,
+                       tr("Save Camera Calibration Parameters"), QDir::homePath(),
+                       tr("%1;;%2").arg(filter1).arg(filter2) );
+
+    if( fileName.isEmpty() )
+        return;
+
+    cv::FileStorage fs( fileName.toStdString(), cv::FileStorage::READ );
+
+    if( fs.isOpened() )
+    {
+        int w,h;
+        bool fisheye;
+
+        fs["Width"] >> w;
+        fs["Height"] >> h;
+        fs["FishEye"] >> fisheye;
+        fs["CameraMatrix"] >> mIntrinsic;
+        fs["DistCoeffs"] >> mDistorsion;
+
+        ui->lineEdit_camera_w->setText( tr("%1").arg(w) );
+        ui->lineEdit_camera_h->setText( tr("%2").arg(h) );
+
+        ui->checkBox_fisheye->setChecked(fisheye);
+
+        updateParamGUI();
+
+        setNewCameraParams();
+    }
 }
 
 void MainWindow::on_pushButton_save_params_clicked()
 {
+    QString selFilter;
 
+    QString filter1 = tr("OpenCV YAML (*.yaml *.yml)");
+    QString filter2 = tr("XML (*.xml)");
+
+    QString fileName = QFileDialog::getSaveFileName(this,
+                       tr("Save Camera Calibration Parameters"), QDir::homePath(),
+                       tr("%1;;%2").arg(filter1).arg(filter2), &selFilter);
+
+    if( fileName.isEmpty() )
+        return;
+
+    if( !fileName.endsWith( ".yaml", Qt::CaseInsensitive) &&
+            !fileName.endsWith( ".yml", Qt::CaseInsensitive) &&
+            !fileName.endsWith( ".xml", Qt::CaseInsensitive) )
+    {
+        if( selFilter == filter2 )
+        {
+            fileName += ".xml";
+        }
+        else
+        {
+            fileName += ".yaml";
+        }
+    }
+
+    int w = ui->lineEdit_camera_w->text().toInt();
+    int h = ui->lineEdit_camera_h->text().toInt();
+
+    bool fisheye = ui->checkBox_fisheye->isChecked();
+
+    cv::FileStorage fs( fileName.toStdString(), cv::FileStorage::WRITE );
+
+    if( fs.isOpened() )
+    {
+        fs << "Width" << w;
+        fs << "Height" << h;
+        fs << "FishEye" << fisheye;
+        fs << "CameraMatrix" << mIntrinsic;
+        fs << "DistCoeffs" << mDistorsion;
+    }
 }
 
 void MainWindow::on_checkBox_fisheye_clicked()
