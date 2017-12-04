@@ -15,10 +15,17 @@ public:
 
     cv::Mat undistort(cv::Mat raw);
 
-    size_t getCbCount(){ return mImgCornersVec.size(); }
+    size_t getCbCount()
+    {
+        return mImgCornersVec.size();
+    }
 
-    void getCameraParams(cv::Mat& K, cv::Mat& D){K=mIntrinsic;D=mDistCoeffs;}
-    void setCameraParams(cv::Mat& K, cv::Mat& D);
+    void getCameraParams(cv::Mat& K, cv::Mat& D)
+    {
+        K=mIntrinsic;
+        D=mDistCoeffs;
+    }
+    void setCameraParams(cv::Mat& K, cv::Mat& D, bool fishEye);
 
 protected:
     void create3DChessboardCorners(cv::Size boardSize, double squareSize);

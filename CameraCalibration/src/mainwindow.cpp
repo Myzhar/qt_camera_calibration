@@ -5,6 +5,7 @@
 #include "qopencvscene.h"
 
 #include <QCameraInfo>
+#include <QGLWidget>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -14,6 +15,8 @@
 
 #include "qchessboardelab.h"
 #include "qcameraundistort.h"
+
+#include <iostream>
 
 using namespace std;
 
@@ -51,12 +54,15 @@ MainWindow::MainWindow(QWidget *parent) :
     mCameraSceneCheckboard = new QOpenCVScene();
     mCameraSceneUndistorted = new QOpenCVScene();
 
+    ui->graphicsView_raw->setViewport( new QGLWidget );
     ui->graphicsView_raw->setScene( mCameraSceneRaw );
     ui->graphicsView_raw->setBackgroundBrush( QBrush( QColor(200,50,50) ) );
 
+    ui->graphicsView_checkboard->setViewport( new QGLWidget );
     ui->graphicsView_checkboard->setScene( mCameraSceneCheckboard );
     ui->graphicsView_checkboard->setBackgroundBrush( QBrush( QColor(50,200,50) ) );
 
+    ui->graphicsView_undistorted->setViewport( new QGLWidget );
     ui->graphicsView_undistorted->setScene( mCameraSceneUndistorted );
     ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(50,50,200) ) );
 
@@ -165,7 +171,9 @@ bool MainWindow::startCamera()
         mCameraThread = NULL;
     }
 
-    mCameraThread = new CameraThread();
+    double fps = ui->lineEdit_camera_fps->text().toDouble();
+
+    mCameraThread = new CameraThread( fps );
 
     connect( mCameraThread, &CameraThread::cameraConnected,
              this, &MainWindow::onCameraConnected );
@@ -247,6 +255,11 @@ void MainWindow::onNewImage( cv::Mat frame )
         mCameraSceneUndistorted->setFgImage(rectified);
     }
 
+    double perc = mCameraThread->getBufPerc();
+
+    int percInt = static_cast<int>(perc*100);
+
+    ui->progressBar_camBuffer->setValue(percInt);
 }
 
 void MainWindow::onNewCbImage(cv::Mat cbImage)
@@ -256,7 +269,7 @@ void MainWindow::onNewCbImage(cv::Mat cbImage)
     ui->lineEdit_cb_count->setText( tr("%1").arg(mCameraUndist->getCbCount()) );
 }
 
-void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining , double calibReprojErr)
+void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining, double calibReprojErr)
 {
     mIntrinsic = K;
     mDistorsion = D;
@@ -303,7 +316,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         if(mCameraUndist)
         {
             disconnect( mCameraUndist, &QCameraUndistort::newCameraParams,
-                     this, &MainWindow::onNewCameraParams );
+                        this, &MainWindow::onNewCameraParams );
 
             delete mCameraUndist;
         }
@@ -386,7 +399,8 @@ bool MainWindow::killGstLaunch( )
             return false;
         }
 
-    } while( !done );
+    }
+    while( !done );
     // <<<<< Kill gst-launch-1.0 processes
 
     return true;
@@ -401,22 +415,22 @@ bool MainWindow::startGstProcess( )
 
 #ifdef USE_ARM
     launchStr = tr(
-                "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
-                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! nvvidconv ! "
-                "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
-                //"omxh264enc low-latency=true insert-sps-pps=true ! "
-                "omxh264enc insert-sps-pps=true ! "
-                "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-                "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
+                    "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
+                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! nvvidconv ! "
+                    "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
+                    //"omxh264enc low-latency=true insert-sps-pps=true ! "
+                    "omxh264enc insert-sps-pps=true ! "
+                    "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+                    "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
                 ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
 #else
     launchStr =
-            tr("gst-launch-1.0 v4l2src device=%1 ! "
-               "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! videoconvert ! "
-               //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
-               "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
-               "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-               "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
+        tr("gst-launch-1.0 v4l2src device=%1 ! "
+           "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! videoconvert ! "
+           //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
+           "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
+           "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+           "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);
@@ -499,89 +513,133 @@ void MainWindow::updateParamGUI()
     }
 }
 
+void MainWindow::setNewCameraParams()
+{
+    mIntrinsic.ptr<double>(0)[0] = ui->lineEdit_fx->text().toDouble();
+    mIntrinsic.ptr<double>(0)[1] = ui->lineEdit_K_01->text().toDouble();
+    mIntrinsic.ptr<double>(0)[2] = ui->lineEdit_cx->text().toDouble();
+    mIntrinsic.ptr<double>(1)[0] = ui->lineEdit_K_10->text().toDouble();
+    mIntrinsic.ptr<double>(1)[1] = ui->lineEdit_fy->text().toDouble();
+    mIntrinsic.ptr<double>(1)[2] = ui->lineEdit_cy->text().toDouble();
+    mIntrinsic.ptr<double>(2)[0] = ui->lineEdit_K_20->text().toDouble();
+    mIntrinsic.ptr<double>(2)[1] = ui->lineEdit_K_21->text().toDouble();
+    mIntrinsic.ptr<double>(2)[2] = ui->lineEdit_scale->text().toDouble();
+
+    cout << "Intrinsic edited: " << endl << mIntrinsic << endl << endl;
+
+    mDistorsion.ptr<double>(0)[0] = ui->lineEdit_k1->text().toDouble();
+    mDistorsion.ptr<double>(1)[0] = ui->lineEdit_k2->text().toDouble();
+
+    if(ui->checkBox_fisheye->isChecked())
+    {
+        mDistorsion.ptr<double>(2)[0] = ui->lineEdit_k3->text().toDouble();
+        mDistorsion.ptr<double>(3)[0] = ui->lineEdit_k4->text().toDouble();
+        mDistorsion.ptr<double>(4)[0] = 0.0;
+        mDistorsion.ptr<double>(5)[0] = 0.0;
+        mDistorsion.ptr<double>(6)[0] = 0.0;
+        mDistorsion.ptr<double>(7)[0] = 0.0;
+    }
+    else
+    {
+        mDistorsion.ptr<double>(2)[0] = ui->lineEdit_p1->text().toDouble();
+        mDistorsion.ptr<double>(3)[0] = ui->lineEdit_p2->text().toDouble();
+        mDistorsion.ptr<double>(4)[0] = ui->lineEdit_k3->text().toDouble();
+        mDistorsion.ptr<double>(5)[0] = ui->lineEdit_k4->text().toDouble();
+        mDistorsion.ptr<double>(6)[0] = ui->lineEdit_k5->text().toDouble();
+        mDistorsion.ptr<double>(7)[0] = ui->lineEdit_k6->text().toDouble();
+    }
+
+    cout << "Distorsion edited: " << endl << mDistorsion << endl << endl;
+
+    if( mCameraUndist )
+    {
+        mCameraUndist->setCameraParams( mIntrinsic, mDistorsion, ui->checkBox_fisheye->isChecked() );
+    }
+}
+
 void MainWindow::on_lineEdit_fx_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_K_01_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_cx_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
-void MainWindow::on_lineEdit__K_10_editingFinished()
+void MainWindow::on_lineEdit_K_10_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_fy_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_cy_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
-void MainWindow::on_lineEdit_20_editingFinished()
+void MainWindow::on_lineEdit_K_20_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
-void MainWindow::on_lineEdit_21_editingFinished()
+void MainWindow::on_lineEdit_K_21_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_scale_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_k1_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_k2_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_k3_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_k4_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_k5_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_k6_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_p1_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_lineEdit_p2_editingFinished()
 {
-
+    setNewCameraParams();
 }
 
 void MainWindow::on_pushButton_calibrate_clicked(bool checked)
@@ -601,5 +659,7 @@ void MainWindow::on_pushButton_save_params_clicked()
 
 void MainWindow::on_checkBox_fisheye_clicked()
 {
+    setNewCameraParams();
+
     updateParamGUI();
 }

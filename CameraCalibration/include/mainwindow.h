@@ -14,7 +14,8 @@ class QOpenCVScene;
 
 class QCameraUndistort;
 
-namespace Ui {
+namespace Ui
+{
 class MainWindow;
 }
 
@@ -46,6 +47,7 @@ protected slots:
 
     void updateParamGUI();
     void updateCbParams();
+    void setNewCameraParams();
 
 private slots:
     void on_pushButton_update_camera_list_clicked();
@@ -55,11 +57,11 @@ private slots:
     void on_lineEdit_fx_editingFinished();
     void on_lineEdit_K_01_editingFinished();
     void on_lineEdit_cx_editingFinished();
-    void on_lineEdit__K_10_editingFinished();
+    void on_lineEdit_K_10_editingFinished();
     void on_lineEdit_fy_editingFinished();
     void on_lineEdit_cy_editingFinished();
-    void on_lineEdit_20_editingFinished();
-    void on_lineEdit_21_editingFinished();
+    void on_lineEdit_K_20_editingFinished();
+    void on_lineEdit_K_21_editingFinished();
     void on_lineEdit_scale_editingFinished();
     void on_lineEdit_k1_editingFinished();
     void on_lineEdit_k2_editingFinished();

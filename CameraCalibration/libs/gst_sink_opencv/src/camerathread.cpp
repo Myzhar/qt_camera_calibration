@@ -5,12 +5,13 @@
 
 using namespace std;
 
-CameraThread::CameraThread()
+CameraThread::CameraThread( double fps)
     : QThread(NULL)
     , mImageSink(NULL)
 {
     qRegisterMetaType<cv::Mat>( "cv::Mat" );
 
+    mFps = fps;
 }
 
 CameraThread::~CameraThread()
@@ -58,12 +59,14 @@ void CameraThread::run()
             break;
         }
 
-        cv::Mat frame = mImageSink->getLastFrame().clone();
+        cv::Mat frame = mImageSink->getLastFrame();
 
         if( !frame.empty() && !frame.rows==0 && !frame.cols==0 )
         {
             emit newImage( frame );
         }
+
+        msleep( 1000.0/mFps );
     }
 
     if(mImageSink)
@@ -72,4 +75,14 @@ void CameraThread::run()
     qDebug() << tr("CameraThread stopped.");
 
     emit cameraDisconnected();
+}
+
+double CameraThread::getBufPerc()
+{
+    if( !mImageSink )
+    {
+        return 0.0;
+    }
+
+    return mImageSink->getBufPerc();
 }
