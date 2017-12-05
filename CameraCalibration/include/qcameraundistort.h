@@ -11,7 +11,8 @@ class QCameraUndistort : public QObject
 {
     Q_OBJECT
 public:
-    explicit QCameraUndistort( cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye, QObject *parent = nullptr );
+    explicit QCameraUndistort(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye,
+                              int refineThreshm = 10, QObject *parent = nullptr );
 
     cv::Mat undistort(cv::Mat raw);
 
@@ -61,6 +62,8 @@ private:
     float mCbSquareSizeMm;
 
     double mReprojErr;
+
+    int mRefineThresh;
 };
 
 #endif // QFISHEYEUNDISTORT_H

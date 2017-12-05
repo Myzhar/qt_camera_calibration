@@ -6,6 +6,7 @@
 
 #include <QCameraInfo>
 #include <QGLWidget>
+#include <QMessageBox>
 #include <QFileDialog>
 
 #include <opencv2/core/core.hpp>
@@ -212,6 +213,19 @@ void MainWindow::onCameraConnected()
 void MainWindow::onCameraDisconnected()
 {
     mCameraConnected = false;
+
+    ui->pushButton_camera_connect_disconnect->setChecked(false);
+    ui->pushButton_camera_connect_disconnect->setText( tr("Start Camera") );
+    stopCamera();
+
+    ui->lineEdit_cb_cols->setEnabled(true);
+    ui->lineEdit_cb_rows->setEnabled(true);
+    ui->lineEdit_cb_mm->setEnabled(true);
+
+    QMessageBox::warning( this, tr("Camera error"), tr("Camera disconnected\n"
+                                                       "If the camera has been just started\n"
+                                                       "please verify the correctness of\n"
+                                                       "Width, Height and FPS"));
 }
 
 void MainWindow::onNewImage( cv::Mat frame )

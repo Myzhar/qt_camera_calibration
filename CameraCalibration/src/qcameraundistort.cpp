@@ -9,12 +9,14 @@
 
 using namespace std;
 
-QCameraUndistort::QCameraUndistort(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye, QObject *parent)
+QCameraUndistort::QCameraUndistort(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye, int refineThreshm, QObject *parent)
     : QObject(parent)
 {
     mImgSize = imgSize;
     mCbSize = cbSize;
     mCbSquareSizeMm = cbSquareSizeMm;
+
+    mRefineThresh = refineThreshm;
 
     mFishEye = fishEye;
 
@@ -73,7 +75,7 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
 {
     mMutex.lock();
 
-    if( mObjCornersVec.size() == 10 )
+    if( mObjCornersVec.size() == mRefineThresh )
     {
         mObjCornersVec.clear();
         mImgCornersVec.clear();
@@ -84,7 +86,7 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
     mObjCornersVec.push_back( mDefObjCorners );
     mImgCornersVec.push_back( img_corners );
 
-    if( mObjCornersVec.size() >= 5)
+    //if( mObjCornersVec.size() >= 5)
     {
         vector<cv::Mat> rvecs;
         vector<cv::Mat> tvecs;
