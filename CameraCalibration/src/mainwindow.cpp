@@ -20,6 +20,8 @@
 
 #include <iostream>
 
+#include <v4l2compcamera.h>
+
 using namespace std;
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -58,15 +60,15 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->graphicsView_raw->setViewport( new QGLWidget );
     ui->graphicsView_raw->setScene( mCameraSceneRaw );
-    ui->graphicsView_raw->setBackgroundBrush( QBrush( QColor(200,50,50) ) );
+    ui->graphicsView_raw->setBackgroundBrush( QBrush( QColor(100,100,100) ) );
 
     ui->graphicsView_checkboard->setViewport( new QGLWidget );
     ui->graphicsView_checkboard->setScene( mCameraSceneCheckboard );
-    ui->graphicsView_checkboard->setBackgroundBrush( QBrush( QColor(50,200,50) ) );
+    ui->graphicsView_checkboard->setBackgroundBrush( QBrush( QColor(50,150,150) ) );
 
     ui->graphicsView_undistorted->setViewport( new QGLWidget );
     ui->graphicsView_undistorted->setScene( mCameraSceneUndistorted );
-    ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(50,50,200) ) );
+    ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(150,50,50) ) );
 
     // <<<<< Stream rendering
 
@@ -76,8 +78,14 @@ MainWindow::MainWindow(QWidget *parent) :
     mIntrinsic.ptr<double>(0)[0] = 884.0;
     mIntrinsic.ptr<double>(1)[1] = 884.0;
     mIntrinsic.ptr<double>(2)[2] = 1.0;
-    mIntrinsic.ptr<double>(0)[2] = ui->lineEdit_camera_w->text().toDouble()/2.0;
-    mIntrinsic.ptr<double>(1)[2] = ui->lineEdit_camera_h->text().toDouble()/2.0;
+
+    int w,h;
+    double fps;
+
+    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps);
+
+    mIntrinsic.ptr<double>(0)[2] = (double)w/2.0;
+    mIntrinsic.ptr<double>(1)[2] = (double)h/2.0;
 
     mDistorsion = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
 }
@@ -173,7 +181,10 @@ bool MainWindow::startCamera()
         mCameraThread = NULL;
     }
 
-    double fps = ui->lineEdit_camera_fps->text().toDouble();
+    int w,h;
+    double fps;
+
+    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps);
 
     mCameraThread = new CameraThread( fps );
 
@@ -221,11 +232,17 @@ void MainWindow::onCameraDisconnected()
     ui->lineEdit_cb_cols->setEnabled(true);
     ui->lineEdit_cb_rows->setEnabled(true);
     ui->lineEdit_cb_mm->setEnabled(true);
+    ui->lineEdit_cb_max_count->setEnabled(true);
+
+    ui->comboBox_camera->setEnabled(true);
+    ui->comboBox_camera_res->setEnabled(true);
+
+    ui->pushButton_load_params->setEnabled(true);
 
     QMessageBox::warning( this, tr("Camera error"), tr("Camera disconnected\n"
-                                                       "If the camera has been just started\n"
-                                                       "please verify the correctness of\n"
-                                                       "Width, Height and FPS"));
+                          "If the camera has been just started\n"
+                          "please verify the correctness of\n"
+                          "Width, Height and FPS"));
 }
 
 void MainWindow::onNewImage( cv::Mat frame )
@@ -251,9 +268,8 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     frmCnt++;
 
-    int fps = ui->lineEdit_camera_fps->text().toInt();
 
-    if( ui->pushButton_calibrate->isChecked() && frmCnt%fps == 0 )
+    if( ui->pushButton_calibrate->isChecked() && frmCnt%((int)mSrcFps) == 0 )
     {
         QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraUndist );
         mElabPool.tryStart(elab);
@@ -264,10 +280,12 @@ void MainWindow::onNewImage( cv::Mat frame )
     if( rectified.empty() )
     {
         mCameraSceneUndistorted->setFgImage(frame);
+        ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(150,50,50) ) );
     }
     else
     {
         mCameraSceneUndistorted->setFgImage(rectified);
+        ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(50,150,50) ) );
     }
 
     double perc = mCameraThread->getBufPerc();
@@ -322,9 +340,16 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
     if( checked )
     {
         mCamDev = ui->comboBox_camera->currentText();
-        mSrcWidth = ui->lineEdit_camera_w->text().toInt();
-        mSrcHeight = ui->lineEdit_camera_h->text().toInt();
-        mSrcFps = ui->lineEdit_camera_fps->text().toInt();
+
+        int w,h;
+        double fps;
+
+        V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps);
+
+
+        mSrcWidth = w;
+        mSrcHeight = h;
+        mSrcFps = fps;
 
         updateCbParams();
 
@@ -354,6 +379,12 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
             ui->lineEdit_cb_cols->setEnabled(false);
             ui->lineEdit_cb_rows->setEnabled(false);
             ui->lineEdit_cb_mm->setEnabled(false);
+            ui->lineEdit_cb_max_count->setEnabled(false);
+
+            ui->comboBox_camera->setEnabled(false);
+            ui->comboBox_camera_res->setEnabled(false);
+
+            ui->pushButton_load_params->setEnabled(false);
         }
         else
         {
@@ -363,6 +394,12 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
             ui->lineEdit_cb_cols->setEnabled(true);
             ui->lineEdit_cb_rows->setEnabled(true);
             ui->lineEdit_cb_mm->setEnabled(true);
+            ui->lineEdit_cb_max_count->setEnabled(true);
+
+            ui->comboBox_camera->setEnabled(true);
+            ui->comboBox_camera_res->setEnabled(true);
+
+            ui->pushButton_load_params->setEnabled(true);
         }
     }
     else
@@ -373,6 +410,12 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         ui->lineEdit_cb_cols->setEnabled(true);
         ui->lineEdit_cb_rows->setEnabled(true);
         ui->lineEdit_cb_mm->setEnabled(true);
+        ui->lineEdit_cb_max_count->setEnabled(true);
+
+        ui->comboBox_camera->setEnabled(true);
+        ui->comboBox_camera_res->setEnabled(true);
+
+        ui->pushButton_load_params->setEnabled(true);
     }
 }
 
@@ -431,21 +474,21 @@ bool MainWindow::startGstProcess( )
 #ifdef USE_ARM
     launchStr = tr(
                     "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
-                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! nvvidconv ! "
+                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/2\" ! nvvidconv ! "
                     "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
                     //"omxh264enc low-latency=true insert-sps-pps=true ! "
                     "omxh264enc insert-sps-pps=true ! "
                     "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                     "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
-                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
+                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps*2);
 #else
     launchStr =
         tr("gst-launch-1.0 v4l2src device=%1 ! "
-           "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/1\" ! videoconvert ! "
+           "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/2\" ! videoconvert ! "
            //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
            "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
            "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-           "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps);
+           "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps*2);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);
@@ -680,11 +723,36 @@ void MainWindow::on_pushButton_load_params_clicked()
         fs["Width"] >> w;
         fs["Height"] >> h;
         fs["FishEye"] >> fisheye;
+
+
+        bool matched = false;
+        for( int i=0; i<ui->comboBox_camera_res->count(); i++ )
+        {
+            QString descr = ui->comboBox_camera_res->itemText( i );
+
+            int w1,h1;
+            double fps;
+
+            V4L2CompCamera::descr2params( descr, w1,h1,fps );
+
+            if( w==w1 && h==h1 )
+            {
+                matched=true;
+                ui->comboBox_camera_res->setCurrentIndex(i);
+                break;
+            }
+        }
+
+        if(!matched)
+        {
+            QMessageBox::warning( this, tr("Warning"), tr("Current camera does not support the resolution\n"
+                                  "%1x%2 loaded from the file:\n"
+                                  "%3").arg(w).arg(h).arg(fileName));
+            return;
+        }
+
         fs["CameraMatrix"] >> mIntrinsic;
         fs["DistCoeffs"] >> mDistorsion;
-
-        ui->lineEdit_camera_w->setText( tr("%1").arg(w) );
-        ui->lineEdit_camera_h->setText( tr("%2").arg(h) );
 
         ui->checkBox_fisheye->setChecked(fisheye);
 
@@ -722,17 +790,14 @@ void MainWindow::on_pushButton_save_params_clicked()
         }
     }
 
-    int w = ui->lineEdit_camera_w->text().toInt();
-    int h = ui->lineEdit_camera_h->text().toInt();
-
     bool fisheye = ui->checkBox_fisheye->isChecked();
 
     cv::FileStorage fs( fileName.toStdString(), cv::FileStorage::WRITE );
 
     if( fs.isOpened() )
     {
-        fs << "Width" << w;
-        fs << "Height" << h;
+        fs << "Width" << mSrcWidth;
+        fs << "Height" << mSrcHeight;
         fs << "FishEye" << fisheye;
         fs << "CameraMatrix" << mIntrinsic;
         fs << "DistCoeffs" << mDistorsion;
@@ -744,4 +809,25 @@ void MainWindow::on_checkBox_fisheye_clicked()
     setNewCameraParams();
 
     updateParamGUI();
+}
+
+void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
+{
+    QList<V4L2CompCamera> fmtList = V4L2CompCamera::enumCompFormats( arg1 );
+
+    ui->comboBox_camera_res->clear();
+
+    foreach (V4L2CompCamera fmt, fmtList)
+    {
+        ui->comboBox_camera_res->addItem( fmt.getDescr() );
+    }
+}
+
+void MainWindow::on_horizontalSlider_alpha_valueChanged(int value)
+{
+    if( mCameraUndist )
+    {
+        double alpha = (double)value/(ui->horizontalSlider_alpha->maximum());
+        mCameraUndist->setNewAlpha(alpha);
+    }
 }

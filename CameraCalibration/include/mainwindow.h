@@ -79,6 +79,10 @@ private slots:
 
     void on_checkBox_fisheye_clicked();
 
+    void on_comboBox_camera_currentIndexChanged(const QString &arg1);
+
+    void on_horizontalSlider_alpha_valueChanged(int value);
+
 private:
     Ui::MainWindow *ui;
 
@@ -102,7 +106,7 @@ private:
     QString mCamDev;
     int mSrcWidth;
     int mSrcHeight;
-    int mSrcFps;
+    double mSrcFps;
 
     cv::Size mCbSize;
     float mCbSizeMm;
