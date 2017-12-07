@@ -26,7 +26,9 @@ public:
         K=mIntrinsic;
         D=mDistCoeffs;
     }
+
     void setCameraParams(cv::Mat& K, cv::Mat& D, bool fishEye);
+    void setNewAlpha( double alpha );
 
 protected:
     void create3DChessboardCorners(cv::Size boardSize, double squareSize);
@@ -56,6 +58,7 @@ private:
     bool mCoeffReady;
     bool mRefined;
     bool mFishEye;
+    double mAlpha;
 
     cv::Size mImgSize;
     cv::Size mCbSize;
