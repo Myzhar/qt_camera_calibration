@@ -6,6 +6,7 @@
 #include <QCameraInfo>
 #include <QProcess>
 #include <QThreadPool>
+#include <QSound>
 
 #include <opencv2/core/core.hpp>
 
@@ -38,6 +39,7 @@ protected:
 public slots:
     void onNewImage(cv::Mat frame);
     void onNewCbImage(cv::Mat cbImage);
+    void onCbDetected();
     void onNewCameraParams(cv::Mat K, cv::Mat D, bool refining, double calibReprojErr );
 
 protected slots:
@@ -114,6 +116,8 @@ private:
     QThreadPool mElabPool;
 
     QCameraUndistort* mCameraUndist;
+
+    QSound* mCbDetectedSnd;
 };
 
 #endif // MAINWINDOW_H

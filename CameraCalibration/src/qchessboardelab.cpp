@@ -4,7 +4,6 @@
 #include <vector>
 
 #include <opencv2/imgproc/imgproc.hpp>
-#include <QSound>
 
 #include "qcameraundistort.h"
 
@@ -22,12 +21,17 @@ QChessboardElab::QChessboardElab( MainWindow* mainWnd, cv::Mat& frame, cv::Size 
 
     connect( this, &QChessboardElab::newCbImage,
              mMainWnd, &MainWindow::onNewCbImage );
+    connect( this, &QChessboardElab::cbFound,
+             mainWnd, &MainWindow::onCbDetected, Qt::BlockingQueuedConnection );
 }
 
 QChessboardElab::~QChessboardElab()
 {
     disconnect( this, &QChessboardElab::newCbImage,
                 mMainWnd, &MainWindow::onNewCbImage );
+
+    disconnect( this, &QChessboardElab::cbFound,
+             mMainWnd, &MainWindow::onCbDetected );
 }
 
 void QChessboardElab::run()
@@ -46,7 +50,7 @@ void QChessboardElab::run()
 
     if(found)
     {
-        QSound::play("://sound/cell-phone-1-nr0.wav");
+        emit cbFound();
 
         cv::cornerSubPix( gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
                           cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));

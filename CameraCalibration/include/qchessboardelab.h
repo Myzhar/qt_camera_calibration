@@ -21,6 +21,7 @@ public:
 
 signals:
     void newCbImage( cv::Mat cbImage );
+    void cbFound();
 
 
 private:

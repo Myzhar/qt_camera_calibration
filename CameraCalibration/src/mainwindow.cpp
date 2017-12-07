@@ -8,6 +8,7 @@
 #include <QGLWidget>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QSound>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -31,13 +32,16 @@ MainWindow::MainWindow(QWidget *parent) :
     mCameraSceneRaw(NULL),
     mCameraSceneCheckboard(NULL),
     mCameraSceneUndistorted(NULL),
-    mCameraUndist(NULL)
+    mCameraUndist(NULL),
+    mCbDetectedSnd(NULL)
 {
     ui->setupUi(this);
 
     killGstLaunch();
 
     mCameraConnected = false;
+
+    mCbDetectedSnd = new QSound( "://sound/cell-phone-1-nr0.wav", this);
 
     updateOpenCvVer();
 
@@ -300,6 +304,13 @@ void MainWindow::onNewCbImage(cv::Mat cbImage)
     mCameraSceneCheckboard->setFgImage(cbImage);
 
     ui->lineEdit_cb_count->setText( tr("%1").arg(mCameraUndist->getCbCount()) );
+}
+
+void MainWindow::onCbDetected()
+{
+    qDebug() << tr("Beep");
+
+    mCbDetectedSnd->play();
 }
 
 void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining, double calibReprojErr)
