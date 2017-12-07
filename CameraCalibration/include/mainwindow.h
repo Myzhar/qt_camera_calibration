@@ -109,6 +109,8 @@ private:
     int mSrcWidth;
     int mSrcHeight;
     double mSrcFps;
+    int mSrcFpsNum;
+    int mSrcFpsDen;
 
     cv::Size mCbSize;
     float mCbSizeMm;

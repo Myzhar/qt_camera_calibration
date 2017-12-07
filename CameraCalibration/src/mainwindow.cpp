@@ -85,8 +85,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     int w,h;
     double fps;
+    int num,den;
 
-    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps);
+    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 
     mIntrinsic.ptr<double>(0)[2] = (double)w/2.0;
     mIntrinsic.ptr<double>(1)[2] = (double)h/2.0;
@@ -187,8 +188,9 @@ bool MainWindow::startCamera()
 
     int w,h;
     double fps;
+    int num,den;
 
-    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps);
+    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 
     mCameraThread = new CameraThread( fps );
 
@@ -308,7 +310,7 @@ void MainWindow::onNewCbImage(cv::Mat cbImage)
 
 void MainWindow::onCbDetected()
 {
-    qDebug() << tr("Beep");
+    //qDebug() << tr("Beep");
 
     mCbDetectedSnd->play();
 }
@@ -354,13 +356,16 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         int w,h;
         double fps;
+        int num,den;
 
-        V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps);
+        V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 
 
         mSrcWidth = w;
         mSrcHeight = h;
         mSrcFps = fps;
+        mSrcFpsNum = num;
+        mSrcFpsDen = den;
 
         updateCbParams();
 
@@ -485,21 +490,22 @@ bool MainWindow::startGstProcess( )
 #ifdef USE_ARM
     launchStr = tr(
                     "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
-                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/2\" ! nvvidconv ! "
+                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
                     "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
                     //"omxh264enc low-latency=true insert-sps-pps=true ! "
                     "omxh264enc insert-sps-pps=true ! "
                     "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                     "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
-                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps*2);
+                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #else
     launchStr =
         tr("gst-launch-1.0 v4l2src device=%1 ! "
-           "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/2\" ! videoconvert ! "
+           "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
            //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
            "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
            "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-           "udpsink host=127.0.0.1 port=5000 sync=false async=false -e").arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFps*2);
+           "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
+            .arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);
@@ -507,7 +513,7 @@ bool MainWindow::startGstProcess( )
     mGstProcess.setProcessChannelMode( QProcess::MergedChannels );
     mGstProcess.start( launchStr );
 
-    if( !mGstProcess.waitForStarted( 10000 ) )
+    if( !mGstProcess.waitForStarted( 3000 ) )
     {
         // TODO Camera error message
 
@@ -743,8 +749,9 @@ void MainWindow::on_pushButton_load_params_clicked()
 
             int w1,h1;
             double fps;
+            int num,den;
 
-            V4L2CompCamera::descr2params( descr, w1,h1,fps );
+            V4L2CompCamera::descr2params( descr, w1,h1,fps,num,den );
 
             if( w==w1 && h==h1 )
             {

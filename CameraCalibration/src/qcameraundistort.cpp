@@ -96,7 +96,7 @@ void QCameraUndistort::setCameraParams( cv::Mat& K, cv::Mat& D, bool fishEye )
 
         nk.ptr<double>(0)[0] = mIntrinsic.ptr<double>(0)[0]/(1.0+mAlpha);
         nk.ptr<double>(1)[1] = mIntrinsic.ptr<double>(1)[1]/(1.0+mAlpha);
-        qDebug() << mAlpha;
+        //qDebug() << mAlpha;
 
         cv::fisheye::initUndistortRectifyMap( mIntrinsic, feDist, cv::Matx33f::eye(),
                                               nk, mImgSize, CV_16SC2, mRemap1, mRemap2  );
@@ -172,7 +172,7 @@ void QCameraUndistort::addCorners( vector<cv::Point2f>& img_corners )
 
             nk.ptr<double>(0)[0] = mIntrinsic.ptr<double>(0)[0]/(1.0+mAlpha);
             nk.ptr<double>(1)[1] = mIntrinsic.ptr<double>(1)[1]/(1.0+mAlpha);
-            qDebug() << mAlpha;
+            //qDebug() << mAlpha;
 
             cv::fisheye::initUndistortRectifyMap( mIntrinsic, feDist, cv::Matx33f::eye(),
                                                   nk, mImgSize, CV_16SC2, mRemap1, mRemap2  );

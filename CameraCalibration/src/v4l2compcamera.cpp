@@ -9,14 +9,17 @@
 #include <QString>
 #include <QDebug>
 
-V4L2CompCamera::V4L2CompCamera(int w, int h, double fps)
+V4L2CompCamera::V4L2CompCamera(int w, int h, int fpsNum, int fpsDen)
     : QObject(NULL)
 {
     mWidth = w;
     mHeight = h;
-    mFPS = fps;
+    mFPS = (double)fpsDen/fpsNum;
 
-    mDescr = tr("%1 x %2 @ %3 FPS").arg(mWidth).arg(mHeight).arg(mFPS);
+    mFpsNum = fpsNum;
+    mFpsDen = fpsDen;
+
+    mDescr = tr("%1 x %2 @ %3 FPS [ %4 / %5 sec ]").arg(mWidth).arg(mHeight).arg(mFPS).arg(mFpsNum).arg(mFpsDen);
 }
 
 V4L2CompCamera::V4L2CompCamera(const V4L2CompCamera& other)
@@ -26,6 +29,9 @@ V4L2CompCamera::V4L2CompCamera(const V4L2CompCamera& other)
     this->mHeight = other.mHeight;
     this->mFPS = other.mFPS;
 
+    this->mFpsNum = other.mFpsNum;
+    this->mFpsDen = other.mFpsDen;
+
     this->mDescr = other.mDescr;
 }
 
@@ -34,6 +40,9 @@ V4L2CompCamera& V4L2CompCamera::operator=(const V4L2CompCamera& other)
     this->mWidth = other.mWidth;
     this->mHeight = other.mHeight;
     this->mFPS = other.mFPS;
+
+    this->mFpsNum = other.mFpsNum;
+    this->mFpsDen = other.mFpsDen;
 
     this->mDescr = other.mDescr;
 
@@ -96,11 +105,11 @@ std::string fcc2s(unsigned int val)
     return s;
 }
 
-bool V4L2CompCamera::descr2params( QString descr, int& width, int& height, double& fps )
+bool V4L2CompCamera::descr2params( QString descr, int& width, int& height, double& fps, int& fpsNum, int& fpsDen )
 {
     QStringList parts = descr.split( " " );
 
-    if( parts.size() != 6 )
+    if( parts.size() != 12 )
     {
         return false;
     }
@@ -120,6 +129,18 @@ bool V4L2CompCamera::descr2params( QString descr, int& width, int& height, doubl
     }
 
     fps = static_cast<QString>(parts.at(4)).toDouble( &ok );
+    if( !ok )
+    {
+        return false;
+    }
+
+    fpsNum = static_cast<QString>(parts.at(7)).toDouble( &ok );
+    if( !ok )
+    {
+        return false;
+    }
+
+    fpsDen = static_cast<QString>(parts.at(9)).toDouble( &ok );
     if( !ok )
     {
         return false;
@@ -185,9 +206,8 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats( QString dev )
                 {
                     frmival.index++;
 
-                    double fps = ((double)frmival.discrete.denominator)/frmival.discrete.numerator;
-
-                    V4L2CompCamera camFmt(frmival.width, frmival.height, fps ) ;
+                    V4L2CompCamera camFmt( frmival.width, frmival.height,
+                                          (int)frmival.discrete.numerator, (int)frmival.discrete.denominator );
 
                     result << camFmt;
 
