@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <opencv2/imgproc/imgproc.hpp>
+#include <QSound>
 
 #include "qcameraundistort.h"
 
@@ -45,6 +46,8 @@ void QChessboardElab::run()
 
     if(found)
     {
+        QSound::play("://sound/cell-phone-1-nr0.wav");
+
         cv::cornerSubPix( gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
                           cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 

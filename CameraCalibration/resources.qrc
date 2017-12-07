@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>sound/cell-phone-1-nr0.wav</file>
+    </qresource>
+</RCC>
