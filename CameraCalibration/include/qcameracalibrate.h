@@ -7,6 +7,8 @@
 
 #include <vector>
 
+class QCameraUndistort;
+
 class QCameraCalibrate : public QObject
 {
     Q_OBJECT
@@ -14,7 +16,9 @@ public:
     explicit QCameraCalibrate(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye,
                               int refineThreshm = 10, QObject *parent = nullptr );
 
-    cv::Mat undistort(cv::Mat raw);
+    virtual ~QCameraCalibrate();
+
+    cv::Mat undistort(cv::Mat &raw);
 
     size_t getCbCount()
     {
@@ -67,6 +71,8 @@ private:
     double mReprojErr;
 
     int mRefineThresh;
+
+    QCameraUndistort* mUndistort;
 };
 
 #endif // QFISHEYEUNDISTORT_H

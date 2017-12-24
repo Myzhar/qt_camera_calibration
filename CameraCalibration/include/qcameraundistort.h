@@ -14,22 +14,26 @@ public:
 
     bool setCameraParams( cv::Size imgSize, bool fishEye, cv::Mat intr, cv::Mat dist, double alpha );
 
+    cv::Mat undistort( cv::Mat& frame );
+
 signals:
 
 public slots:
 
 private:
-    cv::Size mFrmSize;
+    cv::Size mImgSize;
 
     bool mFishEye;
 
     double mAlpha;
 
     cv::Mat mIntrinsic;
-    cv::Mat mDistorsion;
+    cv::Mat mDistCoeffs;
 
     cv::Mat mRemap1;
     cv::Mat mRemap2;
+
+    bool mReady;
 };
 
 #endif // QCAMERAUNDISTORT_H
