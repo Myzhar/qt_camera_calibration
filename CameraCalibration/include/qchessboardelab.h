@@ -7,14 +7,14 @@
 #include <opencv2/calib3d/calib3d.hpp>
 
 class MainWindow;
-class QCameraUndistort;
+class QCameraCalibrate;
 
 class QChessboardElab : public QObject, public QRunnable
 {
     Q_OBJECT
 
 public:
-    QChessboardElab(MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QCameraUndistort *fisheyeUndist);
+    QChessboardElab(MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QCameraCalibrate *fisheyeUndist);
     virtual ~QChessboardElab();
 
     virtual void run() Q_DECL_OVERRIDE;
@@ -30,7 +30,7 @@ private:
     float mCbSizeMm;
 
     MainWindow* mMainWnd;
-    QCameraUndistort* mFisheyeUndist;
+    QCameraCalibrate* mFisheyeUndist;
 };
 
 #endif // QCHESSBOARDELAB_H

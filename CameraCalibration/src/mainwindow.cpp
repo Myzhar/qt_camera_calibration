@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "qchessboardelab.h"
-#include "qcameraundistort.h"
+#include "qcameracalibrate.h"
 
 #include <iostream>
 
@@ -371,7 +371,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         if(mCameraUndist)
         {
-            disconnect( mCameraUndist, &QCameraUndistort::newCameraParams,
+            disconnect( mCameraUndist, &QCameraCalibrate::newCameraParams,
                         this, &MainWindow::onNewCameraParams );
 
             delete mCameraUndist;
@@ -379,9 +379,9 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         bool fisheye = ui->checkBox_fisheye->isChecked();
 
-        mCameraUndist = new QCameraUndistort( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
+        mCameraUndist = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
 
-        connect( mCameraUndist, &QCameraUndistort::newCameraParams,
+        connect( mCameraUndist, &QCameraCalibrate::newCameraParams,
                  this, &MainWindow::onNewCameraParams );
 
 

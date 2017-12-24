@@ -1,72 +1,35 @@
-#ifndef QFISHEYEUNDISTORT_H
-#define QFISHEYEUNDISTORT_H
+#ifndef QCAMERAUNDISTORT_H
+#define QCAMERAUNDISTORT_H
 
 #include <QObject>
-#include <QMutex>
-#include <opencv2/core/core.hpp>
 
-#include <vector>
+#include <opencv2/core/core.hpp>
 
 class QCameraUndistort : public QObject
 {
     Q_OBJECT
 public:
-    explicit QCameraUndistort(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye,
-                              int refineThreshm = 10, QObject *parent = nullptr );
+    explicit QCameraUndistort(cv::Size imgSize, bool fishEye, cv::Mat intr, cv::Mat dist, double alpha,
+                              QObject *parent = nullptr);
 
-    cv::Mat undistort(cv::Mat raw);
-
-    size_t getCbCount()
-    {
-        return mImgCornersVec.size();
-    }
-
-    void getCameraParams(cv::Mat& K, cv::Mat& D)
-    {
-        K=mIntrinsic;
-        D=mDistCoeffs;
-    }
-
-    void setCameraParams(cv::Mat& K, cv::Mat& D, bool fishEye);
-    void setNewAlpha( double alpha );
-
-protected:
-    void create3DChessboardCorners(cv::Size boardSize, double squareSize);
+    bool setCameraParams( cv::Size imgSize, bool fishEye, cv::Mat intr, cv::Mat dist, double alpha );
 
 signals:
-    void newCameraParams(cv::Mat K, cv::Mat D, bool refined, double reprojErr );
 
 public slots:
-    void addCorners(std::vector<cv::Point2f> &img_corners );
 
 private:
-    QMutex mMutex;
+    cv::Size mFrmSize;
 
-    std::vector< std::vector<cv::Point2f> > mImgCornersVec;
-    std::vector< std::vector<cv::Point3f> > mObjCornersVec;
+    bool mFishEye;
 
-    std::vector<cv::Point3f> mDefObjCorners;
-
-    int mCalibFlags;
+    double mAlpha;
 
     cv::Mat mIntrinsic;
-    cv::Mat mDistCoeffs;
+    cv::Mat mDistorsion;
 
     cv::Mat mRemap1;
     cv::Mat mRemap2;
-
-    bool mCoeffReady;
-    bool mRefined;
-    bool mFishEye;
-    double mAlpha;
-
-    cv::Size mImgSize;
-    cv::Size mCbSize;
-    float mCbSquareSizeMm;
-
-    double mReprojErr;
-
-    int mRefineThresh;
 };
 
-#endif // QFISHEYEUNDISTORT_H
+#endif // QCAMERAUNDISTORT_H

@@ -13,7 +13,7 @@
 class CameraThread;
 class QOpenCVScene;
 
-class QCameraUndistort;
+class QCameraCalibrate;
 
 namespace Ui
 {
@@ -117,7 +117,7 @@ private:
 
     QThreadPool mElabPool;
 
-    QCameraUndistort* mCameraUndist;
+    QCameraCalibrate* mCameraUndist;
 
     QSound* mCbDetectedSnd;
 };
