@@ -239,9 +239,9 @@ void MainWindow::onCameraDisconnected()
     ui->pushButton_save_params->setEnabled(false);
 
     QMessageBox::warning( this, tr("Camera error"), tr("Camera disconnected\n"
-                          "If the camera has been just started\n"
-                          "please verify the correctness of\n"
-                          "Width, Height and FPS"));
+                                                       "If the camera has been just started\n"
+                                                       "please verify the correctness of\n"
+                                                       "Width, Height and FPS"));
 }
 
 void MainWindow::onNewImage( cv::Mat frame )
@@ -267,7 +267,6 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     frmCnt++;
 
-
     if( ui->pushButton_calibrate->isChecked() && frmCnt%((int)mSrcFps) == 0 )
     {
         QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraCalib );
@@ -287,11 +286,14 @@ void MainWindow::onNewImage( cv::Mat frame )
         ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(50,150,50) ) );
     }
 
-    double perc = mCameraThread->getBufPerc();
+    if(mCameraThread)
+    {
+        double perc = mCameraThread->getBufPerc();
 
-    int percInt = static_cast<int>(perc*100);
+        int percInt = static_cast<int>(perc*100);
 
-    ui->progressBar_camBuffer->setValue(percInt);
+        ui->progressBar_camBuffer->setValue(percInt);
+    }
 }
 
 void MainWindow::onNewCbImage(cv::Mat cbImage)
@@ -490,22 +492,22 @@ bool MainWindow::startGstProcess( )
 
 #ifdef USE_ARM
     launchStr = tr(
-                    "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
-                    "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
-                    "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
-                    //"omxh264enc low-latency=true insert-sps-pps=true ! "
-                    "omxh264enc insert-sps-pps=true ! "
-                    "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-                    "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
+                "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
+                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
+                "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
+                //"omxh264enc low-latency=true insert-sps-pps=true ! "
+                "omxh264enc insert-sps-pps=true ! "
+                "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+                "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
                 ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #else
     launchStr =
-        tr("gst-launch-1.0 v4l2src device=%1 ! "
-           "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
-           //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
-           "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
-           "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
-           "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
+            tr("gst-launch-1.0 v4l2src device=%1 ! "
+               "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
+               //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
+               "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
+               "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+               "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
             .arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #endif
 
@@ -616,10 +618,10 @@ void MainWindow::setNewCameraParams()
     {
         D.ptr<double>(2)[0] = ui->lineEdit_k3->text().toDouble();
         D.ptr<double>(3)[0] = ui->lineEdit_k4->text().toDouble();
-        D.ptr<double>(4)[0] = 0.0;
-        D.ptr<double>(5)[0] = 0.0;
-        D.ptr<double>(6)[0] = 0.0;
-        D.ptr<double>(7)[0] = 0.0;
+        //D.ptr<double>(4)[0] = 0.0;
+        //D.ptr<double>(5)[0] = 0.0;
+        //D.ptr<double>(6)[0] = 0.0;
+        //D.ptr<double>(7)[0] = 0.0;
     }
     else
     {
@@ -733,8 +735,8 @@ void MainWindow::on_pushButton_load_params_clicked()
     QString filter2 = tr("XML (*.xml)");
 
     QString fileName = QFileDialog::getOpenFileName(this,
-                       tr("Save Camera Calibration Parameters"), QDir::homePath(),
-                       tr("%1;;%2").arg(filter1).arg(filter2) );
+                                                    tr("Save Camera Calibration Parameters"), QDir::homePath(),
+                                                    tr("%1;;%2").arg(filter1).arg(filter2) );
 
     if( fileName.isEmpty() )
         return;
@@ -776,8 +778,8 @@ void MainWindow::on_pushButton_load_params_clicked()
         if(!matched)
         {
             QMessageBox::warning( this, tr("Warning"), tr("Current camera does not support the resolution\n"
-                                  "%1x%2 loaded from the file:\n"
-                                  "%3").arg(w).arg(h).arg(fileName));
+                                                          "%1x%2 loaded from the file:\n"
+                                                          "%3").arg(w).arg(h).arg(fileName));
             return;
         }
 
@@ -807,8 +809,8 @@ void MainWindow::on_pushButton_save_params_clicked()
     QString filter2 = tr("XML (*.xml)");
 
     QString fileName = QFileDialog::getSaveFileName(this,
-                       tr("Save Camera Calibration Parameters"), QDir::homePath(),
-                       tr("%1;;%2").arg(filter1).arg(filter2), &selFilter);
+                                                    tr("Save Camera Calibration Parameters"), QDir::homePath(),
+                                                    tr("%1;;%2").arg(filter1).arg(filter2), &selFilter);
 
     if( fileName.isEmpty() )
         return;
