@@ -23,8 +23,6 @@ signals:
     void cameraDisconnected();
     void cameraConnected();
 
-
-
 protected:
     void run() Q_DECL_OVERRIDE;
 

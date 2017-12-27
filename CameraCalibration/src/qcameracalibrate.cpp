@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-#include "qcameraundistort.h"
+#include "cameraundistort.h"
 
 using namespace std;
 
@@ -19,30 +19,21 @@ QCameraCalibrate::QCameraCalibrate(cv::Size imgSize, cv::Size cbSize, float cbSq
     mImgSize = imgSize;
     mCbSize = cbSize;
     mCbSquareSizeMm = cbSquareSizeMm;
-    mAlpha = 0.0;
+    //mAlpha = 0.0;
 
     mRefineThresh = refineThreshm;
 
-    mFishEye = fishEye;
+    //mFishEye = fishEye;
 
     mRefined = false;
 
     mReprojErr = NAN;
 
-    mIntrinsic =  cv::Mat(3, 3, CV_64F, cv::Scalar::all(0.0f) );
-    mIntrinsic.ptr<double>(0)[0] = 884.0;
-    mIntrinsic.ptr<double>(1)[1] = 884.0;
-    mIntrinsic.ptr<double>(2)[2] = 1.0;
-    mIntrinsic.ptr<double>(0)[2] = (double)imgSize.width/2.0;
-    mIntrinsic.ptr<double>(1)[2] = (double)imgSize.height/2.0;
-
-    mDistCoeffs = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
-
     mCoeffReady = false;
 
     create3DChessboardCorners( mCbSize, mCbSquareSizeMm );
 
-    mUndistort = new QCameraUndistort( mImgSize, mFishEye, cv::Mat(), cv::Mat(), mAlpha );
+    mUndistort = new CameraUndistort( mImgSize );
 }
 
 QCameraCalibrate::~QCameraCalibrate()
@@ -53,55 +44,47 @@ QCameraCalibrate::~QCameraCalibrate()
 
 void QCameraCalibrate::setNewAlpha( double alpha )
 {
-    mAlpha=alpha;
-
-    if(mFishEye)
+    if( mUndistort )
     {
-        // >>>>> FishEye model wants only 4 distorsion parameters
-        cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
-        feDist.ptr<double>(0)[0] = mDistCoeffs.ptr<double>(0)[0];
-        feDist.ptr<double>(1)[0] = mDistCoeffs.ptr<double>(1)[0];
-        feDist.ptr<double>(2)[0] = mDistCoeffs.ptr<double>(2)[0];
-        feDist.ptr<double>(3)[0] = mDistCoeffs.ptr<double>(3)[0];
-        // <<<<< FishEye model wants only 4 distorsion parameters
-
-        mUndistort->setCameraParams( mImgSize, mFishEye, mIntrinsic, feDist, mAlpha );
-    }
-    else
-    {
-        mUndistort->setCameraParams( mImgSize, mFishEye, mIntrinsic, mDistCoeffs, mAlpha );
+        mUndistort->setNewAlpha(alpha);
     }
 }
 
-void QCameraCalibrate::setCameraParams( cv::Mat& K, cv::Mat& D, bool fishEye )
+void QCameraCalibrate::setFisheye( bool fisheye )
 {
-    mFishEye = fishEye;
-
-    mIntrinsic=K;
-    mDistCoeffs=D;
-
-    if(mFishEye)
+    if( mUndistort )
     {
-        // >>>>> FishEye model wants only 4 distorsion parameters
-        cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
-        feDist.ptr<double>(0)[0] = mDistCoeffs.ptr<double>(0)[0];
-        feDist.ptr<double>(1)[0] = mDistCoeffs.ptr<double>(1)[0];
-        feDist.ptr<double>(2)[0] = mDistCoeffs.ptr<double>(2)[0];
-        feDist.ptr<double>(3)[0] = mDistCoeffs.ptr<double>(3)[0];
-        // <<<<< FishEye model wants only 4 distorsion parameters
-
-        mUndistort->setCameraParams( mImgSize, mFishEye, mIntrinsic, feDist, mAlpha );
+        mUndistort->setFisheye(fisheye);
     }
-    else
+}
+
+void QCameraCalibrate::getCameraParams( cv::Size& imgSize, cv::Mat &K, cv::Mat &D, double &alpha, bool &fisheye)
+{
+    if( !mUndistort )
+        return;
+
+    mUndistort->getCameraParams( imgSize, fisheye, K, D, alpha );
+}
+
+bool QCameraCalibrate::setCameraParams(cv::Size imgSize, cv::Mat &K, cv::Mat &D, double alpha, bool fishEye )
+{
+    if( !mUndistort )
+        return false;
+
+    mImgSize = imgSize;
+
+    if( mUndistort->setCameraParams( mImgSize, fishEye, K, D, alpha ) )
     {
-        mUndistort->setCameraParams( mImgSize, mFishEye, mIntrinsic, mDistCoeffs, mAlpha );
+        mRefined=true;      // Initial guess is set, so we want to refine the calibration values
+        mCoeffReady=true;
+
+        return true;
     }
 
-    mRefined=true;      // Initial guess is set, so we want to refine the calibration values
-    mCoeffReady=true;
+    mRefined = false;
+    mCoeffReady = false;
 
-    //cout << "New K:" << endl << mIntrinsic << endl << endl;
-    //cout << "New D:" << endl << mDistCoeffs << endl << endl;
+    return false;
 }
 
 void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
@@ -124,7 +107,14 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
         vector<cv::Mat> rvecs;
         vector<cv::Mat> tvecs;
 
-        if(mFishEye)
+        cv::Size imgSize;
+        bool fisheye;
+        cv::Mat K,D;
+        double alpha;
+
+        mUndistort->getCameraParams( imgSize, fisheye, K, D, alpha );
+
+        if(fisheye)
         {
             // >>>>> Calibration flags
             mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
@@ -136,23 +126,23 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
 
             // >>>>> FishEye model wants only 4 distorsion parameters
             cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
-            feDist.ptr<double>(0)[0] = mDistCoeffs.ptr<double>(0)[0];
-            feDist.ptr<double>(1)[0] = mDistCoeffs.ptr<double>(1)[0];
-            feDist.ptr<double>(2)[0] = mDistCoeffs.ptr<double>(2)[0];
-            feDist.ptr<double>(3)[0] = mDistCoeffs.ptr<double>(3)[0];
+            feDist.ptr<double>(0)[0] = D.ptr<double>(0)[0];
+            feDist.ptr<double>(1)[0] = D.ptr<double>(1)[0];
+            feDist.ptr<double>(2)[0] = D.ptr<double>(2)[0];
+            feDist.ptr<double>(3)[0] = D.ptr<double>(3)[0];
             // <<<<< FishEye model wants only 4 distorsion parameters
 
             mReprojErr = cv::fisheye::calibrate( mObjCornersVec, mImgCornersVec, mImgSize,
-                                                 mIntrinsic, feDist, rvecs, tvecs, mCalibFlags );
+                                                 K, feDist, rvecs, tvecs, mCalibFlags );
 
             // >>>>> Update class distorsion matrix
-            mDistCoeffs.ptr<double>(0)[0] = feDist.ptr<double>(0)[0];
-            mDistCoeffs.ptr<double>(1)[0] = feDist.ptr<double>(1)[0];
-            mDistCoeffs.ptr<double>(2)[0] = feDist.ptr<double>(2)[0];
-            mDistCoeffs.ptr<double>(3)[0] = feDist.ptr<double>(3)[0];
+            D.ptr<double>(0)[0] = feDist.ptr<double>(0)[0];
+            D.ptr<double>(1)[0] = feDist.ptr<double>(1)[0];
+            D.ptr<double>(2)[0] = feDist.ptr<double>(2)[0];
+            D.ptr<double>(3)[0] = feDist.ptr<double>(3)[0];
             // <<<<< Update class distorsion matrix
 
-            mUndistort->setCameraParams( mImgSize, mFishEye, mIntrinsic, feDist, mAlpha );
+            mUndistort->setCameraParams( mImgSize, fisheye, K, D, alpha );
         }
         else
         {
@@ -165,12 +155,12 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
             // <<<<< Calibration flags
 
             mReprojErr = cv::calibrateCamera( mObjCornersVec, mImgCornersVec, mImgSize,
-                                              mIntrinsic, mDistCoeffs, rvecs, tvecs, mCalibFlags );
+                                              K, D, rvecs, tvecs, mCalibFlags );
 
-            mUndistort->setCameraParams( mImgSize, mFishEye, mIntrinsic, mDistCoeffs, mAlpha );
+            mUndistort->setCameraParams( mImgSize, fisheye, K, D, alpha );
         }
 
-        emit newCameraParams( mIntrinsic, mDistCoeffs, mRefined, mReprojErr );
+        emit newCameraParams( K, D, mRefined, mReprojErr );
 
         mCoeffReady = true;
     }

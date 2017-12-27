@@ -654,6 +654,9 @@ cameras. Useful if connection and USB camera</string>
             </item>
             <item row="2" column="1">
              <widget class="QPushButton" name="pushButton_save_params">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>

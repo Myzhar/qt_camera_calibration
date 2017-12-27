@@ -32,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent) :
     mCameraSceneRaw(NULL),
     mCameraSceneCheckboard(NULL),
     mCameraSceneUndistorted(NULL),
-    mCameraUndist(NULL),
+    mCameraCalib(NULL),
     mCbDetectedSnd(NULL)
 {
     ui->setupUi(this);
@@ -78,21 +78,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
     mElabPool.setMaxThreadCount( 3 );
 
-    mIntrinsic =  cv::Mat(3, 3, CV_64F, cv::Scalar::all(0.0f) );
-    mIntrinsic.ptr<double>(0)[0] = 884.0;
-    mIntrinsic.ptr<double>(1)[1] = 884.0;
-    mIntrinsic.ptr<double>(2)[2] = 1.0;
-
     int w,h;
     double fps;
     int num,den;
 
     V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
-
-    mIntrinsic.ptr<double>(0)[2] = (double)w/2.0;
-    mIntrinsic.ptr<double>(1)[2] = (double)h/2.0;
-
-    mDistorsion = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
 }
 
 MainWindow::~MainWindow()
@@ -121,8 +111,8 @@ MainWindow::~MainWindow()
     if(mCameraSceneUndistorted)
         delete mCameraSceneUndistorted;
 
-    if(mCameraUndist)
-        delete mCameraUndist;
+    if(mCameraCalib)
+        delete mCameraCalib;
 }
 
 QString MainWindow::updateOpenCvVer()
@@ -208,6 +198,8 @@ bool MainWindow::startCamera()
 
 void MainWindow::stopCamera()
 {
+    killGstLaunch();
+
     if( mCameraThread )
     {
         disconnect( mCameraThread, &CameraThread::cameraConnected,
@@ -244,6 +236,7 @@ void MainWindow::onCameraDisconnected()
     ui->comboBox_camera_res->setEnabled(true);
 
     ui->pushButton_load_params->setEnabled(true);
+    ui->pushButton_save_params->setEnabled(false);
 
     QMessageBox::warning( this, tr("Camera error"), tr("Camera disconnected\n"
                           "If the camera has been just started\n"
@@ -277,11 +270,11 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     if( ui->pushButton_calibrate->isChecked() && frmCnt%((int)mSrcFps) == 0 )
     {
-        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraUndist );
+        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraCalib );
         mElabPool.tryStart(elab);
     }
 
-    cv::Mat rectified = mCameraUndist->undistort( frame );
+    cv::Mat rectified = mCameraCalib->undistort( frame );
 
     if( rectified.empty() )
     {
@@ -305,7 +298,7 @@ void MainWindow::onNewCbImage(cv::Mat cbImage)
 {
     mCameraSceneCheckboard->setFgImage(cbImage);
 
-    ui->lineEdit_cb_count->setText( tr("%1").arg(mCameraUndist->getCbCount()) );
+    ui->lineEdit_cb_count->setText( tr("%1").arg(mCameraCalib->getCbCount()) );
 }
 
 void MainWindow::onCbDetected()
@@ -317,9 +310,6 @@ void MainWindow::onCbDetected()
 
 void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining, double calibReprojErr)
 {
-    mIntrinsic = K;
-    mDistorsion = D;
-
     if( refining )
     {
         mCalibInfo.setText( tr("Refining existing Camera parameters") );
@@ -344,8 +334,10 @@ void MainWindow::onNewCameraParams(cv::Mat K, cv::Mat D, bool refining, double c
         ui->lineEdit_calib_reproj_err->setStyleSheet("QLineEdit { background: rgb(250, 50, 50);}");
     }
 
-
-    updateParamGUI();
+    if( !K.empty() && !D.empty() )
+    {
+        updateParamGUI( K, D );
+    }
 }
 
 void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
@@ -369,24 +361,30 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         updateCbParams();
 
-        if(mCameraUndist)
+        if(mCameraCalib)
         {
-            disconnect( mCameraUndist, &QCameraCalibrate::newCameraParams,
+            disconnect( mCameraCalib, &QCameraCalibrate::newCameraParams,
                         this, &MainWindow::onNewCameraParams );
 
-            delete mCameraUndist;
+            delete mCameraCalib;
         }
 
         bool fisheye = ui->checkBox_fisheye->isChecked();
 
-        mCameraUndist = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
+        mCameraCalib = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
 
-        connect( mCameraUndist, &QCameraCalibrate::newCameraParams,
+        connect( mCameraCalib, &QCameraCalibrate::newCameraParams,
                  this, &MainWindow::onNewCameraParams );
 
+        cv::Size imgSize;
+        cv::Mat K, D;
+        double alpha;
+        mCameraCalib->getCameraParams( imgSize, K, D, alpha, fisheye );
 
-        mCameraUndist->getCameraParams( mIntrinsic, mDistorsion );
-        updateParamGUI();
+        ui->checkBox_fisheye->setChecked(fisheye);
+        ui->horizontalSlider_alpha->setValue( static_cast<int>( alpha*ui->horizontalSlider_alpha->maximum() ) );
+
+        updateParamGUI(K,D);
 
         if( startCamera() )
         {
@@ -401,6 +399,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
             ui->comboBox_camera_res->setEnabled(false);
 
             ui->pushButton_load_params->setEnabled(false);
+            ui->pushButton_save_params->setEnabled(true);
         }
         else
         {
@@ -416,6 +415,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
             ui->comboBox_camera_res->setEnabled(true);
 
             ui->pushButton_load_params->setEnabled(true);
+            ui->pushButton_save_params->setEnabled(false);
         }
     }
     else
@@ -432,6 +432,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         ui->comboBox_camera_res->setEnabled(true);
 
         ui->pushButton_load_params->setEnabled(true);
+        ui->pushButton_save_params->setEnabled(false);
     }
 }
 
@@ -530,13 +531,13 @@ void MainWindow::updateCbParams()
     mCbSizeMm = ui->lineEdit_cb_mm->text().toFloat();
 }
 
-void MainWindow::updateParamGUI()
+void MainWindow::updateParamGUI( cv::Mat K, cv::Mat D )
 {
-    double fx = mIntrinsic.ptr<double>(0)[0];
-    double fy = mIntrinsic.ptr<double>(1)[1];
-    double cx = mIntrinsic.ptr<double>(0)[2];
-    double cy = mIntrinsic.ptr<double>(1)[2];
-    double scale = mIntrinsic.ptr<double>(2)[2];
+    double fx = K.ptr<double>(0)[0];
+    double fy = K.ptr<double>(1)[1];
+    double cx = K.ptr<double>(0)[2];
+    double cy = K.ptr<double>(1)[2];
+    double scale = K.ptr<double>(2)[2];
 
     ui->lineEdit_fx->setText( tr("%1").arg(fx) );
     ui->lineEdit_fy->setText( tr("%1").arg(fy) );
@@ -544,13 +545,13 @@ void MainWindow::updateParamGUI()
     ui->lineEdit_cy->setText( tr("%1").arg(cy) );
     ui->lineEdit_scale->setText( tr("%1").arg(scale) );
 
-    double k1 = mDistorsion.ptr<double>(0)[0];
-    double k2 = mDistorsion.ptr<double>(1)[0];
+    double k1 = D.ptr<double>(0)[0];
+    double k2 = D.ptr<double>(1)[0];
 
     if( ui->checkBox_fisheye->isChecked() )
     {
-        double k3 = mDistorsion.ptr<double>(2)[0];
-        double k4 = mDistorsion.ptr<double>(3)[0];
+        double k3 = D.ptr<double>(2)[0];
+        double k4 = D.ptr<double>(3)[0];
 
         ui->lineEdit_k1->setText( tr("%1").arg(k1) );
         ui->lineEdit_k2->setText( tr("%1").arg(k2) );
@@ -564,13 +565,13 @@ void MainWindow::updateParamGUI()
     }
     else
     {
-        double p1 = mDistorsion.ptr<double>(2)[0];
-        double p2 = mDistorsion.ptr<double>(3)[0];
+        double p1 = D.ptr<double>(2)[0];
+        double p2 = D.ptr<double>(3)[0];
 
-        double k3 = mDistorsion.ptr<double>(4)[0];
-        double k4 = mDistorsion.ptr<double>(5)[0];
-        double k5 = mDistorsion.ptr<double>(6)[0];
-        double k6 = mDistorsion.ptr<double>(7)[0];
+        double k3 = D.ptr<double>(4)[0];
+        double k4 = D.ptr<double>(5)[0];
+        double k5 = D.ptr<double>(6)[0];
+        double k6 = D.ptr<double>(7)[0];
 
         ui->lineEdit_k1->setText( tr("%1").arg(k1) );
         ui->lineEdit_k2->setText( tr("%1").arg(k2) );
@@ -590,42 +591,50 @@ void MainWindow::updateParamGUI()
 
 void MainWindow::setNewCameraParams()
 {
-    mIntrinsic.ptr<double>(0)[0] = ui->lineEdit_fx->text().toDouble();
-    mIntrinsic.ptr<double>(0)[1] = ui->lineEdit_K_01->text().toDouble();
-    mIntrinsic.ptr<double>(0)[2] = ui->lineEdit_cx->text().toDouble();
-    mIntrinsic.ptr<double>(1)[0] = ui->lineEdit_K_10->text().toDouble();
-    mIntrinsic.ptr<double>(1)[1] = ui->lineEdit_fy->text().toDouble();
-    mIntrinsic.ptr<double>(1)[2] = ui->lineEdit_cy->text().toDouble();
-    mIntrinsic.ptr<double>(2)[0] = ui->lineEdit_K_20->text().toDouble();
-    mIntrinsic.ptr<double>(2)[1] = ui->lineEdit_K_21->text().toDouble();
-    mIntrinsic.ptr<double>(2)[2] = ui->lineEdit_scale->text().toDouble();
+    if( !mCameraCalib )
+    {
+        return;
+    }
 
-    mDistorsion.ptr<double>(0)[0] = ui->lineEdit_k1->text().toDouble();
-    mDistorsion.ptr<double>(1)[0] = ui->lineEdit_k2->text().toDouble();
+    cv::Mat K(3, 3, CV_64F, cv::Scalar::all(0.0f) );
+    cv::Mat D( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
+
+    K.ptr<double>(0)[0] = ui->lineEdit_fx->text().toDouble();
+    K.ptr<double>(0)[1] = ui->lineEdit_K_01->text().toDouble();
+    K.ptr<double>(0)[2] = ui->lineEdit_cx->text().toDouble();
+    K.ptr<double>(1)[0] = ui->lineEdit_K_10->text().toDouble();
+    K.ptr<double>(1)[1] = ui->lineEdit_fy->text().toDouble();
+    K.ptr<double>(1)[2] = ui->lineEdit_cy->text().toDouble();
+    K.ptr<double>(2)[0] = ui->lineEdit_K_20->text().toDouble();
+    K.ptr<double>(2)[1] = ui->lineEdit_K_21->text().toDouble();
+    K.ptr<double>(2)[2] = ui->lineEdit_scale->text().toDouble();
+
+    D.ptr<double>(0)[0] = ui->lineEdit_k1->text().toDouble();
+    D.ptr<double>(1)[0] = ui->lineEdit_k2->text().toDouble();
 
     if(ui->checkBox_fisheye->isChecked())
     {
-        mDistorsion.ptr<double>(2)[0] = ui->lineEdit_k3->text().toDouble();
-        mDistorsion.ptr<double>(3)[0] = ui->lineEdit_k4->text().toDouble();
-        mDistorsion.ptr<double>(4)[0] = 0.0;
-        mDistorsion.ptr<double>(5)[0] = 0.0;
-        mDistorsion.ptr<double>(6)[0] = 0.0;
-        mDistorsion.ptr<double>(7)[0] = 0.0;
+        D.ptr<double>(2)[0] = ui->lineEdit_k3->text().toDouble();
+        D.ptr<double>(3)[0] = ui->lineEdit_k4->text().toDouble();
+        D.ptr<double>(4)[0] = 0.0;
+        D.ptr<double>(5)[0] = 0.0;
+        D.ptr<double>(6)[0] = 0.0;
+        D.ptr<double>(7)[0] = 0.0;
     }
     else
     {
-        mDistorsion.ptr<double>(2)[0] = ui->lineEdit_p1->text().toDouble();
-        mDistorsion.ptr<double>(3)[0] = ui->lineEdit_p2->text().toDouble();
-        mDistorsion.ptr<double>(4)[0] = ui->lineEdit_k3->text().toDouble();
-        mDistorsion.ptr<double>(5)[0] = ui->lineEdit_k4->text().toDouble();
-        mDistorsion.ptr<double>(6)[0] = ui->lineEdit_k5->text().toDouble();
-        mDistorsion.ptr<double>(7)[0] = ui->lineEdit_k6->text().toDouble();
+        D.ptr<double>(2)[0] = ui->lineEdit_p1->text().toDouble();
+        D.ptr<double>(3)[0] = ui->lineEdit_p2->text().toDouble();
+        D.ptr<double>(4)[0] = ui->lineEdit_k3->text().toDouble();
+        D.ptr<double>(5)[0] = ui->lineEdit_k4->text().toDouble();
+        D.ptr<double>(6)[0] = ui->lineEdit_k5->text().toDouble();
+        D.ptr<double>(7)[0] = ui->lineEdit_k6->text().toDouble();
     }
 
-    if( mCameraUndist )
-    {
-        mCameraUndist->setCameraParams( mIntrinsic, mDistorsion, ui->checkBox_fisheye->isChecked() );
-    }
+    double alpha = static_cast<double>(ui->horizontalSlider_alpha->value())/ui->horizontalSlider_alpha->maximum();
+    bool fisheye = ui->checkBox_fisheye->isChecked();
+
+    mCameraCalib->setCameraParams( cv::Size(mSrcWidth,mSrcHeight), K, D, alpha, fisheye );
 }
 
 void MainWindow::on_lineEdit_fx_editingFinished()
@@ -730,17 +739,20 @@ void MainWindow::on_pushButton_load_params_clicked()
     if( fileName.isEmpty() )
         return;
 
-    cv::FileStorage fs( fileName.toStdString(), cv::FileStorage::READ );
+    // Not using the function from CameraUndistort to verify that they are coherent before setting them
+
+    cv::FileStorage fs( fileName.toStdString(), cv::FileStorage::READ||cv::FileStorage::FORMAT_AUTO );
 
     if( fs.isOpened() )
     {
         int w,h;
         bool fisheye;
+        double alpha;
 
         fs["Width"] >> w;
         fs["Height"] >> h;
         fs["FishEye"] >> fisheye;
-
+        fs["Alpha"] >> alpha;
 
         bool matched = false;
         for( int i=0; i<ui->comboBox_camera_res->count(); i++ )
@@ -769,12 +781,16 @@ void MainWindow::on_pushButton_load_params_clicked()
             return;
         }
 
-        fs["CameraMatrix"] >> mIntrinsic;
-        fs["DistCoeffs"] >> mDistorsion;
+        cv::Mat K,D;
+
+        fs["CameraMatrix"] >> K;
+        fs["DistCoeffs"] >> D;
 
         ui->checkBox_fisheye->setChecked(fisheye);
 
-        updateParamGUI();
+        ui->horizontalSlider_alpha->setValue( static_cast<int>(alpha*ui->horizontalSlider_alpha->maximum()) );
+
+        updateParamGUI(K,D);
 
         setNewCameraParams();
     }
@@ -782,6 +798,9 @@ void MainWindow::on_pushButton_load_params_clicked()
 
 void MainWindow::on_pushButton_save_params_clicked()
 {
+    if( !mCameraCalib )
+        return;
+
     QString selFilter;
 
     QString filter1 = tr("OpenCV YAML (*.yaml *.yml)");
@@ -808,25 +827,24 @@ void MainWindow::on_pushButton_save_params_clicked()
         }
     }
 
-    bool fisheye = ui->checkBox_fisheye->isChecked();
-
     cv::FileStorage fs( fileName.toStdString(), cv::FileStorage::WRITE );
 
     if( fs.isOpened() )
     {
-        fs << "Width" << mSrcWidth;
-        fs << "Height" << mSrcHeight;
+        cv::Size imgSize;
+        cv::Mat K,D;
+        bool fisheye;
+        double alpha;
+
+        mCameraCalib->getCameraParams( imgSize,K,D,alpha,fisheye );
+
+        fs << "Width" << imgSize.width;
+        fs << "Height" << imgSize.height;
         fs << "FishEye" << fisheye;
-        fs << "CameraMatrix" << mIntrinsic;
-        fs << "DistCoeffs" << mDistorsion;
+        fs << "Alpha" << alpha;
+        fs << "CameraMatrix" << K;
+        fs << "DistCoeffs" << D;
     }
-}
-
-void MainWindow::on_checkBox_fisheye_clicked()
-{
-    setNewCameraParams();
-
-    updateParamGUI();
 }
 
 void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
@@ -843,9 +861,25 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
 
 void MainWindow::on_horizontalSlider_alpha_valueChanged(int value)
 {
-    if( mCameraUndist )
+    if( mCameraCalib )
     {
         double alpha = (double)value/(ui->horizontalSlider_alpha->maximum());
-        mCameraUndist->setNewAlpha(alpha);
+        mCameraCalib->setNewAlpha(alpha);
     }
+}
+
+void MainWindow::on_checkBox_fisheye_clicked(bool checked)
+{
+    if( mCameraCalib )
+    {
+        mCameraCalib->setFisheye( checked );
+    }
+    cv::Size imgSize;
+    cv::Mat K,D;
+    bool fisheye;
+    double alpha;
+
+    mCameraCalib->getCameraParams( imgSize,K,D,alpha,fisheye );
+
+    updateParamGUI( K,D );
 }

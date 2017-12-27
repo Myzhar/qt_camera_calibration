@@ -7,7 +7,7 @@
 
 #include <vector>
 
-class QCameraUndistort;
+class CameraUndistort;
 
 class QCameraCalibrate : public QObject
 {
@@ -25,14 +25,11 @@ public:
         return mImgCornersVec.size();
     }
 
-    void getCameraParams(cv::Mat& K, cv::Mat& D)
-    {
-        K=mIntrinsic;
-        D=mDistCoeffs;
-    }
+    void getCameraParams( cv::Size& imgSize, cv::Mat& K, cv::Mat& D, double& alpha, bool& fisheye);
+    bool setCameraParams(cv::Size imgSize, cv::Mat& K, cv::Mat& D, double alpha, bool fishEye);
 
-    void setCameraParams(cv::Mat& K, cv::Mat& D, bool fishEye);
     void setNewAlpha( double alpha );
+    void setFisheye( bool fisheye );
 
 protected:
     void create3DChessboardCorners(cv::Size boardSize, double squareSize);
@@ -53,16 +50,13 @@ private:
 
     int mCalibFlags;
 
-    cv::Mat mIntrinsic;
-    cv::Mat mDistCoeffs;
-
-    cv::Mat mRemap1;
-    cv::Mat mRemap2;
+    //cv::Mat mIntrinsic;
+    //cv::Mat mDistCoeffs;
 
     bool mCoeffReady;
     bool mRefined;
-    bool mFishEye;
-    double mAlpha;
+    //bool mFishEye;
+    //double mAlpha;
 
     cv::Size mImgSize;
     cv::Size mCbSize;
@@ -72,7 +66,7 @@ private:
 
     int mRefineThresh;
 
-    QCameraUndistort* mUndistort;
+    CameraUndistort* mUndistort;
 };
 
 #endif // QFISHEYEUNDISTORT_H

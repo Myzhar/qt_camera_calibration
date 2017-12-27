@@ -47,7 +47,7 @@ protected slots:
     void onCameraDisconnected();
     void onProcessReadyRead();
 
-    void updateParamGUI();
+    void updateParamGUI(cv::Mat K, cv::Mat D);
     void updateCbParams();
     void setNewCameraParams();
 
@@ -79,11 +79,11 @@ private slots:
     void on_pushButton_load_params_clicked();
     void on_pushButton_save_params_clicked();
 
-    void on_checkBox_fisheye_clicked();
-
     void on_comboBox_camera_currentIndexChanged(const QString &arg1);
 
     void on_horizontalSlider_alpha_valueChanged(int value);
+
+    void on_checkBox_fisheye_clicked(bool checked);
 
 private:
     Ui::MainWindow *ui;
@@ -102,8 +102,6 @@ private:
     QOpenCVScene* mCameraSceneUndistorted;
 
     cv::Mat mLastFrame;
-    cv::Mat mIntrinsic;
-    cv::Mat mDistorsion;
 
     QString mCamDev;
     int mSrcWidth;
@@ -117,7 +115,7 @@ private:
 
     QThreadPool mElabPool;
 
-    QCameraCalibrate* mCameraUndist;
+    QCameraCalibrate* mCameraCalib;
 
     QSound* mCbDetectedSnd;
 };
