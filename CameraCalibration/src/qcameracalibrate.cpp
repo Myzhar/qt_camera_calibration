@@ -147,10 +147,10 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
         else
         {
             // >>>>> Calibration flags
-            mCalibFlags = CV_CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters
+            mCalibFlags = cv::CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters
             if( mRefined )
             {
-                mCalibFlags |= CV_CALIB_USE_INTRINSIC_GUESS;
+                mCalibFlags |= cv::CALIB_USE_INTRINSIC_GUESS;
             }
             // <<<<< Calibration flags
 

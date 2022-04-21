@@ -1,10 +1,25 @@
 #include "include/v4l2compcamera.h"
 
 #include <stdio.h>
+
+#ifdef Q_OS_LINUX
 #include <fcntl.h>
 #include <linux/videodev2.h>
 #include <libv4l2.h>
 #include <sys/ioctl.h>
+#endif // Q_OS_LINUX
+
+#ifdef Q_OS_WINDOWS
+
+#include <windows.h>
+#include <dshow.h>
+
+#include <atlbase.h>
+
+#pragma comment(lib, "strmiids")
+
+#endif
+
 
 #include <QString>
 #include <QDebug>
@@ -57,6 +72,7 @@ static std::string num2s(unsigned num)
     return buf;
 }
 
+/*
 std::string buftype2s(int type)
 {
     switch (type)
@@ -91,6 +107,7 @@ std::string buftype2s(int type)
         return "Unknown (" + num2s(type) + ")";
     }
 }
+*/
 
 std::string fcc2s(unsigned int val)
 {
@@ -148,6 +165,8 @@ bool V4L2CompCamera::descr2params( QString descr, int& width, int& height, doubl
 
     return true;
 }
+
+#ifdef Q_OS_LINUX
 
 QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats( QString dev )
 {
@@ -223,4 +242,196 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats( QString dev )
 
     return result;
 }
+#endif // Q_OS_LINUX
 
+#ifdef Q_OS_WINDOWS
+
+namespace {
+
+class CComUsageScope
+{
+    bool m_bInitialized;
+public:
+    explicit CComUsageScope(DWORD dwCoInit = COINIT_MULTITHREADED | COINIT_SPEED_OVER_MEMORY)
+    {
+        m_bInitialized = SUCCEEDED(CoInitializeEx(NULL, dwCoInit));
+    }
+    ~CComUsageScope()
+    {
+        if (m_bInitialized)
+            CoUninitialize();
+    }
+};
+
+HRESULT EnumerateDevices(REFGUID category, IEnumMoniker **ppEnum)
+{
+    // Create the System Device Enumerator.
+    ICreateDevEnum *pDevEnum;
+    HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL,
+        CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDevEnum));
+
+    if (SUCCEEDED(hr))
+    {
+        // Create an enumerator for the category.
+        hr = pDevEnum->CreateClassEnumerator(category, ppEnum, 0);
+        if (hr == S_FALSE)
+        {
+            hr = VFW_E_NOT_FOUND;  // The category is empty. Treat as an error.
+        }
+        pDevEnum->Release();
+    }
+    return hr;
+}
+
+void _FreeMediaType(AM_MEDIA_TYPE& mt)
+{
+    if (mt.cbFormat != 0)
+    {
+        CoTaskMemFree((PVOID)mt.pbFormat);
+        mt.cbFormat = 0;
+        mt.pbFormat = NULL;
+    }
+    if (mt.pUnk != NULL)
+    {
+        // pUnk should not be used.
+        mt.pUnk->Release();
+        mt.pUnk = NULL;
+    }
+}
+
+
+// Delete a media type structure that was allocated on the heap.
+void _DeleteMediaType(AM_MEDIA_TYPE *pmt)
+{
+    if (pmt != NULL)
+    {
+        _FreeMediaType(*pmt);
+        CoTaskMemFree(pmt);
+    }
+}
+
+
+} // namespace
+
+QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
+{
+    CComUsageScope scope;
+
+    CComPtr<IEnumMoniker> pEnum;
+
+    if (FAILED(EnumerateDevices(CLSID_VideoInputDeviceCategory, &pEnum)))
+        return {};
+
+    QList<V4L2CompCamera> result;
+
+    IMoniker *pMoniker{};
+
+    while (pEnum->Next(1, &pMoniker, NULL) == S_OK)
+    {
+        CComPtr<IPropertyBag> pPropBag;
+        HRESULT hr = pMoniker->BindToStorage(0, 0, IID_PPV_ARGS(&pPropBag));
+        if (FAILED(hr))
+        {
+            pMoniker->Release();
+            continue;
+        }
+
+        VARIANT var;
+        VariantInit(&var);
+
+        /*
+
+        // Get description or friendly name.
+        hr = pPropBag->Read(L"Description", &var, 0);
+        if (FAILED(hr))
+        {
+            hr = pPropBag->Read(L"FriendlyName", &var, 0);
+        }
+        if (SUCCEEDED(hr))
+        {
+            printf("%S\n", var.bstrVal);
+            VariantClear(&var);
+        }
+
+        //hr = pPropBag->Write(L"FriendlyName", &var);
+
+        // WaveInID applies only to audio capture devices.
+        hr = pPropBag->Read(L"WaveInID", &var, 0);
+        if (SUCCEEDED(hr))
+        {
+            printf("WaveIn ID: %d\n", var.lVal);
+            VariantClear(&var);
+        }
+
+        */
+
+        bool selected = false;
+
+        hr = pPropBag->Read(L"DevicePath", &var, 0);
+        if (SUCCEEDED(hr))
+        {
+            QString v((const QChar*)var.bstrVal);
+
+            selected = dev.contains(v);
+
+            VariantClear(&var);
+        }
+
+        CComPtr<IBaseFilter> ppDevice;
+
+        //we get the filter
+        if (selected && SUCCEEDED(pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&ppDevice)))
+        {
+            CComPtr<IEnumPins> pEnumPins;
+            if (SUCCEEDED((ppDevice->EnumPins(&pEnumPins))))
+            {
+                IPin *pPin = NULL;
+                while (pEnumPins->Next(1, &pPin, 0) == S_OK)
+                {
+                    PIN_DIRECTION direction;
+                    if (SUCCEEDED(pPin->QueryDirection(&direction))
+                        && direction == PINDIR_OUTPUT)
+                    //PIN_INFO info;
+                    //if (SUCCEEDED(pPin->QueryPinInfo(&info))
+                    //    && info.dir == PINDIR_OUTPUT)
+                    {
+                        CComPtr<IEnumMediaTypes> pEnum;
+                        AM_MEDIA_TYPE *pmt = NULL;
+
+                        if (SUCCEEDED(pPin->EnumMediaTypes(&pEnum)))
+                        {
+                            while (pEnum->Next(1, &pmt, NULL) == S_OK)
+                            {
+                                if ((pmt->formattype == FORMAT_VideoInfo) &&
+                                    (pmt->cbFormat >= sizeof(VIDEOINFOHEADER)) &&
+                                    (pmt->pbFormat != NULL))
+                                {
+                                    auto videoInfoHeader = (VIDEOINFOHEADER*)pmt->pbFormat;
+
+                                    V4L2CompCamera camFmt(videoInfoHeader->bmiHeader.biWidth, 
+                                        videoInfoHeader->bmiHeader.biHeight,
+                                        videoInfoHeader->AvgTimePerFrame,
+                                        10000000);
+
+                                    result << camFmt;
+
+
+                                }
+
+                                _DeleteMediaType(pmt);
+                            }
+                        }
+                    }
+                    if (pPin)
+                        pPin->Release();
+                }
+            }
+        }
+
+        pMoniker->Release();
+    }
+
+    return result;
+}
+
+#endif

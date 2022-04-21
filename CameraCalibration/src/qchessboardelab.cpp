@@ -39,7 +39,7 @@ void QChessboardElab::run()
     cv::Mat gray;
 
     // >>>>> Chessboard detection
-    cv::cvtColor( mFrame, gray,  CV_BGR2GRAY );
+    cv::cvtColor( mFrame, gray,  cv::COLOR_BGR2GRAY );
     vector<cv::Point2f> corners; //this will be filled by the detected corners
 
     //CALIB_CB_FAST_CHECK saves a lot of time on images
@@ -53,7 +53,7 @@ void QChessboardElab::run()
         emit cbFound();
 
         cv::cornerSubPix( gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
-                          cv::TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+                          cv::TermCriteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 30, 0.1));
 
         cv::drawChessboardCorners( mFrame, mCbSize, cv::Mat(corners), found );
 
