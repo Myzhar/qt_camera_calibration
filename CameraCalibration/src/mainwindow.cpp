@@ -491,7 +491,7 @@ bool MainWindow::startGstProcess( )
     QString launchStr;
 
 #ifdef USE_ARM
-    launchStr = tr(
+    launchStr = QStringLiteral(
                 "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
                 "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
                 "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
@@ -502,7 +502,7 @@ bool MainWindow::startGstProcess( )
                 ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #elif defined(Q_OS_WIN)
     launchStr =
-        tr("gst-launch-1.0.exe ksvideosrc ! "
+        QStringLiteral("gst-launch-1.0.exe ksvideosrc ! "
             "video/x-raw,format=I420,width=%1,height=%2,framerate=%3/1 ! videoconvert ! "
             //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
             "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
@@ -512,7 +512,7 @@ bool MainWindow::startGstProcess( )
         .arg(mSrcWidth).arg(mSrcHeight).arg(std::lround(mSrcFps));
 #else
     launchStr =
-            tr("gst-launch-1.0 v4l2src device=%1 ! "
+        QStringLiteral("gst-launch-1.0 v4l2src device=%1 ! "
                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
                //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
                "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
