@@ -1,6 +1,7 @@
 #include "include/qchessboardelab.h"
 
 #include <mainwindow.h>
+#include <utility>
 #include <vector>
 
 #include <opencv2/imgproc/imgproc.hpp>
@@ -10,11 +11,11 @@
 using namespace std;
 
 QChessboardElab::QChessboardElab( MainWindow* mainWnd, cv::Mat& frame, cv::Size cbSize, float cbSizeMm, QCameraCalibrate* fisheyeUndist  )
-    : QObject(NULL)
+    : QObject(nullptr)
 {
     mFrame = frame;
     mMainWnd = mainWnd;
-    mCbSize = cbSize;
+    mCbSize = std::move(cbSize);
     mCbSizeMm = cbSizeMm;
 
     mFisheyeUndist = fisheyeUndist;
@@ -60,9 +61,10 @@ void QChessboardElab::run()
         vector<cv::Point3f> obj;
 
         int numSquares = mCbSize.width*mCbSize.height;
-        for(int j=0;j<numSquares;j++)
+        obj.reserve(numSquares);
+for(int j=0;j<numSquares;j++)
         {
-            obj.push_back(cv::Point3f((j/mCbSize.width)*mCbSizeMm, (j%mCbSize.width)*mCbSizeMm, 0.0f));
+            obj.emplace_back((j/mCbSize.width)*mCbSizeMm, (j%mCbSize.width)*mCbSizeMm, 0.0F);
         }
 
         mFisheyeUndist->addCorners( corners );

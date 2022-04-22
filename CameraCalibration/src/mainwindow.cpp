@@ -28,12 +28,12 @@ using namespace std;
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    mCameraThread(NULL),
-    mCameraSceneRaw(NULL),
-    mCameraSceneCheckboard(NULL),
-    mCameraSceneUndistorted(NULL),
-    mCameraCalib(NULL),
-    mCbDetectedSnd(NULL)
+    mCameraThread(nullptr),
+    mCameraSceneRaw(nullptr),
+    mCameraSceneCheckboard(nullptr),
+    mCameraSceneUndistorted(nullptr),
+    mCameraCalib(nullptr),
+    mCbDetectedSnd(nullptr)
 {
     ui->setupUi(this);
 
@@ -78,9 +78,11 @@ MainWindow::MainWindow(QWidget *parent) :
 
     mElabPool.setMaxThreadCount( 3 );
 
-    int w,h;
+    int w;
+    int h;
     double fps;
-    int num,den;
+    int num;
+    int den;
 
     V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 }
@@ -98,21 +100,11 @@ MainWindow::~MainWindow()
     mElabPool.clear();
 
     delete ui;
-
-    if(mCameraThread)
-        delete mCameraThread;
-
-    if(mCameraSceneRaw)
-        delete mCameraSceneRaw;
-
-    if(mCameraSceneCheckboard)
-        delete mCameraSceneCheckboard;
-
-    if(mCameraSceneUndistorted)
-        delete mCameraSceneUndistorted;
-
-    if(mCameraCalib)
-        delete mCameraCalib;
+    delete mCameraThread;
+    delete mCameraSceneRaw;
+    delete mCameraSceneCheckboard;
+    delete mCameraSceneUndistorted;
+    delete mCameraCalib;
 }
 
 QString MainWindow::updateOpenCvVer()
@@ -146,11 +138,13 @@ void MainWindow::on_pushButton_update_camera_list_clicked()
 
 void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
 {
-    if( mCameras.size()<1 )
+    if( mCameras.empty() ) {
         return;
+}
 
-    if( index>mCameras.size()-1  )
+    if( index>mCameras.size()-1  ) {
         return;
+}
 
     if( index<0 )
     {
@@ -164,21 +158,22 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
 
 bool MainWindow::startCamera()
 {
-    if(!killGstLaunch())
+    if(!killGstLaunch()) {
         return false;
-
-    if(!startGstProcess())
-        return false;
-
-    if( mCameraThread )
-    {
-        delete mCameraThread;
-        mCameraThread = NULL;
     }
 
-    int w,h;
+    if(!startGstProcess()) {
+        return false;
+    }
+
+    delete mCameraThread;
+    mCameraThread = nullptr;
+
+    int w;
+    int h;
     double fps;
-    int num,den;
+    int num;
+    int den;
 
     V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 
@@ -210,7 +205,7 @@ void MainWindow::stopCamera()
                     this, &MainWindow::onNewImage );
 
         delete mCameraThread;
-        mCameraThread = NULL;
+        mCameraThread = nullptr;
     }
 }
 
@@ -269,7 +264,7 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     if( ui->pushButton_calibrate->isChecked() && frmCnt%((int)mSrcFps) == 0 )
     {
-        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraCalib );
+        auto* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraCalib );
         mElabPool.tryStart(elab);
     }
 
@@ -348,9 +343,11 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
     {
         mCamDev = ui->comboBox_camera->currentText();
 
-        int w,h;
+        int w;
+        int h;
         double fps;
-        int num,den;
+        int num;
+        int den;
 
         V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 
@@ -379,7 +376,8 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
                  this, &MainWindow::onNewCameraParams );
 
         cv::Size imgSize;
-        cv::Mat K, D;
+        cv::Mat K;
+        cv::Mat D;
         double alpha;
         mCameraCalib->getCameraParams( imgSize, K, D, alpha, fisheye );
 
@@ -485,8 +483,9 @@ bool MainWindow::killGstLaunch( )
 
 bool MainWindow::startGstProcess( )
 {
-    if( mCamDev.size()==0 )
+    if( mCamDev.size()==0 ) {
         return false;
+}
 
     QString launchStr;
 
@@ -608,8 +607,8 @@ void MainWindow::setNewCameraParams()
         return;
     }
 
-    cv::Mat K(3, 3, CV_64F, cv::Scalar::all(0.0f) );
-    cv::Mat D( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
+    cv::Mat K(3, 3, CV_64F, cv::Scalar::all(0.0F) );
+    cv::Mat D( 8, 1, CV_64F, cv::Scalar::all(0.0F) );
 
     K.ptr<double>(0)[0] = ui->lineEdit_fx->text().toDouble();
     K.ptr<double>(0)[1] = ui->lineEdit_K_01->text().toDouble();
@@ -748,8 +747,9 @@ void MainWindow::on_pushButton_load_params_clicked()
                                                     tr("Save Camera Calibration Parameters"), QDir::homePath(),
                                                     tr("%1;;%2").arg(filter1).arg(filter2) );
 
-    if( fileName.isEmpty() )
+    if( fileName.isEmpty() ) {
         return;
+}
 
     // Not using the function from CameraUndistort to verify that they are coherent before setting them
 
@@ -757,7 +757,8 @@ void MainWindow::on_pushButton_load_params_clicked()
 
     if( fs.isOpened() )
     {
-        int w,h;
+        int w;
+        int h;
         bool fisheye;
         double alpha;
 
@@ -771,9 +772,11 @@ void MainWindow::on_pushButton_load_params_clicked()
         {
             QString descr = ui->comboBox_camera_res->itemText( i );
 
-            int w1,h1;
+            int w1;
+            int h1;
             double fps;
-            int num,den;
+            int num;
+            int den;
 
             V4L2CompCamera::descr2params( descr, w1,h1,fps,num,den );
 
@@ -793,7 +796,8 @@ void MainWindow::on_pushButton_load_params_clicked()
             return;
         }
 
-        cv::Mat K,D;
+        cv::Mat K;
+        cv::Mat D;
 
         fs["CameraMatrix"] >> K;
         fs["DistCoeffs"] >> D;
@@ -810,8 +814,9 @@ void MainWindow::on_pushButton_load_params_clicked()
 
 void MainWindow::on_pushButton_save_params_clicked()
 {
-    if( !mCameraCalib )
+    if( !mCameraCalib ) {
         return;
+}
 
     QString selFilter;
 
@@ -822,8 +827,9 @@ void MainWindow::on_pushButton_save_params_clicked()
                                                     tr("Save Camera Calibration Parameters"), QDir::homePath(),
                                                     tr("%1;;%2").arg(filter1).arg(filter2), &selFilter);
 
-    if( fileName.isEmpty() )
+    if( fileName.isEmpty() ) {
         return;
+}
 
     if( !fileName.endsWith( ".yaml", Qt::CaseInsensitive) &&
             !fileName.endsWith( ".yml", Qt::CaseInsensitive) &&
@@ -844,7 +850,8 @@ void MainWindow::on_pushButton_save_params_clicked()
     if( fs.isOpened() )
     {
         cv::Size imgSize;
-        cv::Mat K,D;
+        cv::Mat K;
+        cv::Mat D;
         bool fisheye;
         double alpha;
 
@@ -887,7 +894,8 @@ void MainWindow::on_checkBox_fisheye_clicked(bool checked)
         mCameraCalib->setFisheye( checked );
     }
     cv::Size imgSize;
-    cv::Mat K,D;
+    cv::Mat K;
+    cv::Mat D;
     bool fisheye;
     double alpha;
 

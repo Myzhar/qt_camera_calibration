@@ -1,6 +1,6 @@
 #include "include/v4l2compcamera.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 #ifdef Q_OS_LINUX
 #include <fcntl.h>
@@ -25,7 +25,7 @@
 #include <QDebug>
 
 V4L2CompCamera::V4L2CompCamera(int w, int h, int fpsNum, int fpsDen)
-    : QObject(NULL)
+    : QObject(nullptr)
 {
     mWidth = w;
     mHeight = h;
@@ -38,7 +38,7 @@ V4L2CompCamera::V4L2CompCamera(int w, int h, int fpsNum, int fpsDen)
 }
 
 V4L2CompCamera::V4L2CompCamera(const V4L2CompCamera& other)
-    : QObject(NULL)
+    : QObject(nullptr)
 {
     this->mWidth = other.mWidth;
     this->mHeight = other.mHeight;
@@ -117,8 +117,9 @@ std::string fcc2s(unsigned int val)
     s += (val >> 8) & 0x7f;
     s += (val >> 16) & 0x7f;
     s += (val >> 24) & 0x7f;
-    if (val & (1 << 31))
+    if (val & (1 << 31)) {
         s += "-BE";
+}
     return s;
 }
 
@@ -158,12 +159,7 @@ bool V4L2CompCamera::descr2params( QString descr, int& width, int& height, doubl
     }
 
     fpsDen = static_cast<QString>(parts.at(9)).toDouble( &ok );
-    if( !ok )
-    {
-        return false;
-    }
-
-    return true;
+    return ok;
 }
 
 #ifdef Q_OS_LINUX
@@ -254,12 +250,13 @@ class CComUsageScope
 public:
     explicit CComUsageScope(DWORD dwCoInit = COINIT_MULTITHREADED | COINIT_SPEED_OVER_MEMORY)
     {
-        m_bInitialized = SUCCEEDED(CoInitializeEx(NULL, dwCoInit));
+        m_bInitialized = SUCCEEDED(CoInitializeEx(nullptr, dwCoInit));
     }
     ~CComUsageScope()
     {
-        if (m_bInitialized)
+        if (m_bInitialized) {
             CoUninitialize();
+}
     }
 };
 
@@ -267,7 +264,7 @@ HRESULT EnumerateDevices(REFGUID category, IEnumMoniker **ppEnum)
 {
     // Create the System Device Enumerator.
     ICreateDevEnum *pDevEnum;
-    HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum, NULL,
+    HRESULT hr = CoCreateInstance(CLSID_SystemDeviceEnum, nullptr,
         CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDevEnum));
 
     if (SUCCEEDED(hr))
@@ -289,13 +286,13 @@ void _FreeMediaType(AM_MEDIA_TYPE& mt)
     {
         CoTaskMemFree((PVOID)mt.pbFormat);
         mt.cbFormat = 0;
-        mt.pbFormat = NULL;
+        mt.pbFormat = nullptr;
     }
-    if (mt.pUnk != NULL)
+    if (mt.pUnk != nullptr)
     {
         // pUnk should not be used.
         mt.pUnk->Release();
-        mt.pUnk = NULL;
+        mt.pUnk = nullptr;
     }
 }
 
@@ -303,7 +300,7 @@ void _FreeMediaType(AM_MEDIA_TYPE& mt)
 // Delete a media type structure that was allocated on the heap.
 void _DeleteMediaType(AM_MEDIA_TYPE *pmt)
 {
-    if (pmt != NULL)
+    if (pmt != nullptr)
     {
         _FreeMediaType(*pmt);
         CoTaskMemFree(pmt);
@@ -319,17 +316,18 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
 
     CComPtr<IEnumMoniker> pEnum;
 
-    if (FAILED(EnumerateDevices(CLSID_VideoInputDeviceCategory, &pEnum)))
+    if (FAILED(EnumerateDevices(CLSID_VideoInputDeviceCategory, &pEnum))) {
         return {};
+}
 
     QList<V4L2CompCamera> result;
 
     IMoniker *pMoniker{};
 
-    while (pEnum->Next(1, &pMoniker, NULL) == S_OK)
+    while (pEnum->Next(1, &pMoniker, nullptr) == S_OK)
     {
         CComPtr<IPropertyBag> pPropBag;
-        HRESULT hr = pMoniker->BindToStorage(0, 0, IID_PPV_ARGS(&pPropBag));
+        HRESULT hr = pMoniker->BindToStorage(nullptr, nullptr, IID_PPV_ARGS(&pPropBag));
         if (FAILED(hr))
         {
             pMoniker->Release();
@@ -367,7 +365,7 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
 
         bool selected = false;
 
-        hr = pPropBag->Read(L"DevicePath", &var, 0);
+        hr = pPropBag->Read(L"DevicePath", &var, nullptr);
         if (SUCCEEDED(hr))
         {
             QString v((const QChar*)var.bstrVal);
@@ -380,13 +378,13 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
         CComPtr<IBaseFilter> ppDevice;
 
         //we get the filter
-        if (selected && SUCCEEDED(pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&ppDevice)))
+        if (selected && SUCCEEDED(pMoniker->BindToObject(nullptr, nullptr, IID_IBaseFilter, (void**)&ppDevice)))
         {
             CComPtr<IEnumPins> pEnumPins;
             if (SUCCEEDED((ppDevice->EnumPins(&pEnumPins))))
             {
-                IPin *pPin = NULL;
-                while (pEnumPins->Next(1, &pPin, 0) == S_OK)
+                IPin *pPin = nullptr;
+                while (pEnumPins->Next(1, &pPin, nullptr) == S_OK)
                 {
                     PIN_DIRECTION direction;
                     if (SUCCEEDED(pPin->QueryDirection(&direction))
@@ -396,15 +394,15 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
                     //    && info.dir == PINDIR_OUTPUT)
                     {
                         CComPtr<IEnumMediaTypes> pEnum;
-                        AM_MEDIA_TYPE *pmt = NULL;
+                        AM_MEDIA_TYPE *pmt = nullptr;
 
                         if (SUCCEEDED(pPin->EnumMediaTypes(&pEnum)))
                         {
-                            while (pEnum->Next(1, &pmt, NULL) == S_OK)
+                            while (pEnum->Next(1, &pmt, nullptr) == S_OK)
                             {
                                 if ((pmt->formattype == FORMAT_VideoInfo) &&
                                     (pmt->cbFormat >= sizeof(VIDEOINFOHEADER)) &&
-                                    (pmt->pbFormat != NULL))
+                                    (pmt->pbFormat != nullptr))
                                 {
                                     auto videoInfoHeader = (VIDEOINFOHEADER*)pmt->pbFormat;
 
@@ -422,8 +420,9 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
                             }
                         }
                     }
-                    if (pPin)
+                    if (pPin) {
                         pPin->Release();
+}
                 }
             }
         }

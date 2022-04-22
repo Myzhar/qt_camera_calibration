@@ -1,13 +1,14 @@
 #include "cameraundistort.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <utility>
 
 CameraUndistort::CameraUndistort(cv::Size imgSize, bool fishEye, cv::Mat intr, cv::Mat dist, double alpha)
 {
     mImgSize = imgSize;
 
-    mIntrinsic =  cv::Mat(3, 3, CV_64F, cv::Scalar::all(0.0f) );
-    mDistCoeffs = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
+    mIntrinsic =  cv::Mat(3, 3, CV_64F, cv::Scalar::all(0.0F) );
+    mDistCoeffs = cv::Mat( 8, 1, CV_64F, cv::Scalar::all(0.0F) );
 
     mIntrinsic.ptr<double>(0)[0] = 1000.0;
     mIntrinsic.ptr<double>(1)[1] = 1000.0;
@@ -40,20 +41,21 @@ bool CameraUndistort::setFisheye(bool fisheye)
 
 bool CameraUndistort::setCameraParams(cv::Size imgSize, bool fishEye, cv::Mat intr, cv::Mat dist , double alpha)
 {
-    mImgSize = imgSize;
+    mImgSize = std::move(imgSize);
     mFishEye = fishEye;
     mAlpha = alpha;
 
-    mIntrinsic = intr;
-    mDistCoeffs = dist;
+    mIntrinsic = std::move(intr);
+    mDistCoeffs = std::move(dist);
 
-    if( mIntrinsic.empty() || mDistCoeffs.empty() )
+    if( mIntrinsic.empty() || mDistCoeffs.empty() ) {
         return false;    
+}
 
     if( mFishEye )
     {
         // >>>>> FishEye model wants only 4 distorsion parameters
-        cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
+        cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0F) );
         feDist.ptr<double>(0)[0] = mDistCoeffs.ptr<double>(0)[0];
         feDist.ptr<double>(1)[0] = mDistCoeffs.ptr<double>(1)[0];
         feDist.ptr<double>(2)[0] = mDistCoeffs.ptr<double>(2)[0];
@@ -112,9 +114,11 @@ bool CameraUndistort::loadCameraParams( std::string fileName )
         return false;
     }
 
-    int w,h;
+    int w;
+    int h;
     bool fisheye;
-    cv::Mat intr,dist;
+    cv::Mat intr;
+    cv::Mat dist;
     double alpha;
 
     fs["Width"] >> w;
@@ -165,8 +169,9 @@ bool CameraUndistort::loadCameraParams( std::string fileName )
 
 cv::Mat CameraUndistort::undistort(cv::Mat& raw )
 {
-    if( !mReady || mRemap1.empty() || mRemap2.empty() )
-        return cv::Mat();
+    if( !mReady || mRemap1.empty() || mRemap2.empty() ) {
+        return {};
+}
 
     cv::Mat res;
     cv::remap(raw, res, mRemap1, mRemap2, cv::INTER_LINEAR); // Apply undistorsion mappings

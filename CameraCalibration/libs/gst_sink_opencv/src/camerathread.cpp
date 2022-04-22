@@ -6,8 +6,8 @@
 using namespace std;
 
 CameraThread::CameraThread( double fps)
-    : QThread(NULL)
-    , mImageSink(NULL)
+    : QThread(nullptr)
+    , mImageSink(nullptr)
 {
     qRegisterMetaType<cv::Mat>( "cv::Mat" );
 
@@ -73,8 +73,7 @@ void CameraThread::run()
 
     }
 
-    if(mImageSink)
-        delete mImageSink;
+    delete mImageSink;
 
     qDebug() << tr("CameraThread stopped.");
 

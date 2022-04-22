@@ -8,8 +8,8 @@
 
 QOpenCVScene::QOpenCVScene(QObject *parent) :
     QGraphicsScene(parent),
-    mBgPixmapItem(NULL),
-    mTrackRect(NULL)
+    mBgPixmapItem(nullptr),
+    mTrackRect(nullptr)
 {
     setBackgroundBrush( QBrush(QColor(255,255,255)));
 
@@ -27,8 +27,7 @@ QOpenCVScene::QOpenCVScene(QObject *parent) :
 
 QOpenCVScene::~QOpenCVScene()
 {
-    if( mBgPixmapItem )
-        delete mBgPixmapItem;
+    delete mBgPixmapItem;
 }
 
 void QOpenCVScene::setFgImage( cv::Mat& cvImg )
@@ -41,8 +40,9 @@ void QOpenCVScene::setFgImage( cv::Mat& cvImg )
 
         addItem( mBgPixmapItem );
     }
-    else
+    else {
         mBgPixmapItem->setPixmap( cvMatToQPixmap(cvImg) );
+}
 
     //cv::imshow( "Test", cvImg );
     //qDebug() << tr("Image: %1 x %2").arg(cvImg.cols).arg(cvImg.rows);
@@ -103,8 +103,9 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         // only create our color table once
         if ( sColorTable.isEmpty() )
         {
-            for ( int i = 0; i < 256; ++i )
+            for ( int i = 0; i < 256; ++i ) {
                 sColorTable.push_back( qRgb( i, i, i ) );
+}
         }
 
         QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_Indexed8 );
@@ -119,7 +120,7 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         break;
     }
 
-    return QImage();
+    return {};
 }
 
 QPixmap QOpenCVScene::cvMatToQPixmap( const cv::Mat &inMat )
