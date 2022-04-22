@@ -500,6 +500,16 @@ bool MainWindow::startGstProcess( )
                 "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                 "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
                 ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+#elif defined(Q_OS_WIN)
+    launchStr =
+        tr("gst-launch-1.0.exe ksvideosrc ! "
+            "video/x-raw,format=I420,width=%1,height=%2,framerate=%3/1 ! videoconvert ! "
+            //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
+            "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
+            "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+            "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
+        //.arg(mCamDev)
+        .arg(mSrcWidth).arg(mSrcHeight).arg(std::lround(mSrcFps));
 #else
     launchStr =
             tr("gst-launch-1.0 v4l2src device=%1 ! "
