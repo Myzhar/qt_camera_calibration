@@ -119,7 +119,7 @@ std::string fcc2s(unsigned int val)
     s += (val >> 24) & 0x7f;
     if (val & (1 << 31)) {
         s += "-BE";
-}
+    }
     return s;
 }
 
@@ -318,7 +318,7 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
 
     if (FAILED(EnumerateDevices(CLSID_VideoInputDeviceCategory, &pEnum))) {
         return {};
-}
+    }
 
     QList<V4L2CompCamera> result;
 
@@ -336,32 +336,6 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
 
         VARIANT var;
         VariantInit(&var);
-
-        /*
-
-        // Get description or friendly name.
-        hr = pPropBag->Read(L"Description", &var, 0);
-        if (FAILED(hr))
-        {
-            hr = pPropBag->Read(L"FriendlyName", &var, 0);
-        }
-        if (SUCCEEDED(hr))
-        {
-            printf("%S\n", var.bstrVal);
-            VariantClear(&var);
-        }
-
-        //hr = pPropBag->Write(L"FriendlyName", &var);
-
-        // WaveInID applies only to audio capture devices.
-        hr = pPropBag->Read(L"WaveInID", &var, 0);
-        if (SUCCEEDED(hr))
-        {
-            printf("WaveIn ID: %d\n", var.lVal);
-            VariantClear(&var);
-        }
-
-        */
 
         bool selected = false;
 
@@ -406,14 +380,15 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
                                 {
                                     auto videoInfoHeader = (VIDEOINFOHEADER*)pmt->pbFormat;
 
-                                    V4L2CompCamera camFmt(videoInfoHeader->bmiHeader.biWidth, 
-                                        videoInfoHeader->bmiHeader.biHeight,
-                                        videoInfoHeader->AvgTimePerFrame,
-                                        10000000);
+                                    if (videoInfoHeader->AvgTimePerFrame < 10000000)
+                                    {
+                                        V4L2CompCamera camFmt(videoInfoHeader->bmiHeader.biWidth,
+                                            videoInfoHeader->bmiHeader.biHeight,
+                                            videoInfoHeader->AvgTimePerFrame,
+                                            10000000);
 
-                                    result << camFmt;
-
-
+                                        result << camFmt;
+                                    }
                                 }
 
                                 _DeleteMediaType(pmt);
@@ -422,7 +397,7 @@ QList<V4L2CompCamera> V4L2CompCamera::enumCompFormats(QString dev)
                     }
                     if (pPin) {
                         pPin->Release();
-}
+                    }
                 }
             }
         }

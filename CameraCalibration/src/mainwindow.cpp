@@ -523,12 +523,18 @@ bool MainWindow::startGstProcess( )
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);
 
     mGstProcess.setProcessChannelMode( QProcess::MergedChannels );
+
+    connect(&mGstProcess, &QProcess::readyReadStandardOutput, [&pingProcess = this->mGstProcess]() {
+        QString output = pingProcess.readAllStandardOutput();
+        qDebug() << "Child process trace: " << output;
+    });
+
     mGstProcess.start( launchStr );
 
-    if( !mGstProcess.waitForStarted( 3000 ) )
+    if( !mGstProcess.waitForStarted( 5000 ) )
     {
         // TODO Camera error message
-
+        qDebug() << "Timed out starting a child process";
         return false;
     }
 
