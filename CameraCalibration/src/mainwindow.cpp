@@ -483,9 +483,10 @@ bool MainWindow::killGstLaunch( )
 
 bool MainWindow::startGstProcess( )
 {
+    // TODO handle command line analogously to https://github.com/GStreamer/gst-plugins-base/blob/master/tools/gst-device-monitor.c
     if( mCamDev.size()==0 ) {
         return false;
-}
+    }
 
     QString launchStr;
 
