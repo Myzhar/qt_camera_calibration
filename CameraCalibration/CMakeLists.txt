@@ -36,7 +36,8 @@ add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
     include/mainwindow.h
     include/qcameracalibrate.h
     include/qchessboardelab.h
-    include/v4l2compcamera.h
+#    include/v4l2compcamera.h
+    include/cameraman.h
     libs/gst_sink_opencv/include/camerathread.h
     libs/gst_sink_opencv/include/gst_sink_opencv.hpp
     libs/gst_sink_opencv/src/camerathread.cpp
@@ -48,7 +49,8 @@ add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
     src/mainwindow.cpp
     src/qcameracalibrate.cpp
     src/qchessboardelab.cpp
-    src/v4l2compcamera.cpp
+#    src/v4l2compcamera.cpp
+    src/cameraman.cpp
     src/mainwindow.ui
 )
 target_include_directories(CameraCalibration PUBLIC

@@ -21,7 +21,7 @@
 
 #include <iostream>
 
-#include <v4l2compcamera.h>
+//#include <v4l2compcamera.h>
 
 using namespace std;
 
@@ -78,13 +78,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     mElabPool.setMaxThreadCount( 3 );
 
-    int w;
-    int h;
-    double fps;
-    int num;
-    int den;
+    //int w;
+    //int h;
+    //double fps;
+    //int num;
+    //int den;
 
-    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
+    //V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 }
 
 MainWindow::~MainWindow()
@@ -118,13 +118,19 @@ QStringList MainWindow::updateCameraInfo()
 {
     QStringList res;
 
-    mCameras = QCameraInfo::availableCameras();
-    foreach (const QCameraInfo &cameraInfo, mCameras)
-    {
-        QString name = cameraInfo.deviceName();
-        qDebug() << cameraInfo.description();
+    //mCameras = QCameraInfo::availableCameras();
+    //foreach (const QCameraInfo &cameraInfo, mCameras)
+    //{
+    //    QString name = cameraInfo.deviceName();
+    //    qDebug() << cameraInfo.description();
 
-        res.push_back(name);
+    //    res.push_back(name);
+    //}
+
+    mCameras = getCameraDescriptions();
+    for (const auto& cameraInfo : mCameras)
+    {
+        res.push_back(cameraInfo.id);
     }
 
     return res;
@@ -152,7 +158,15 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
     }
     else
     {
-        ui->label_camera->setText( static_cast<QCameraInfo>(mCameras.at(index)).description() );
+        ui->label_camera->setText(mCameras.at(index).description);
+
+        ui->comboBox_camera_res->clear();
+
+        for (const auto& mode : mCameras[index].modes)
+        {
+            ui->comboBox_camera_res->addItem(mode.getDescr());
+        }
+
     }
 }
 
@@ -169,6 +183,7 @@ bool MainWindow::startCamera()
     delete mCameraThread;
     mCameraThread = nullptr;
 
+    /*
     int w;
     int h;
     double fps;
@@ -176,8 +191,11 @@ bool MainWindow::startCamera()
     int den;
 
     V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
+    */
 
-    mCameraThread = new CameraThread( fps );
+    const auto& mode = mCameras[ui->comboBox_camera->currentIndex()].modes[ui->comboBox_camera_res->currentIndex()];
+
+    mCameraThread = new CameraThread(mode.fps);
 
     connect( mCameraThread, &CameraThread::cameraConnected,
              this, &MainWindow::onCameraConnected );
@@ -341,6 +359,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 {
     if( checked )
     {
+        /*
         mCamDev = ui->comboBox_camera->currentText();
 
         int w;
@@ -350,13 +369,18 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
         int den;
 
         V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
+        */
 
+        const auto& mCamera = mCameras[ui->comboBox_camera->currentIndex()];
+        const auto& mode = mCamera.modes[ui->comboBox_camera_res->currentIndex()];
 
-        mSrcWidth = w;
-        mSrcHeight = h;
-        mSrcFps = fps;
-        mSrcFpsNum = num;
-        mSrcFpsDen = den;
+        mLaunchLine = mCamera.launchLine;
+
+        mSrcWidth = mode.w;
+        mSrcHeight = mode.h;
+        mSrcFps = mode.fps;
+        mSrcFpsNum = mode.num;
+        mSrcFpsDen = mode.den;
 
         updateCbParams();
 
@@ -451,6 +475,15 @@ void MainWindow::onProcessReadyRead()
 bool MainWindow::killGstLaunch( )
 {
     // >>>>> Kill gst-launch-1.0 processes
+
+#ifdef Q_OS_WIN
+
+    QProcess killer;
+    killer.start("taskkill /im gst-launch-1.0.exe /f /t");
+    killer.waitForFinished(1000);
+
+#else
+
     QProcess killer;
     QProcess checker;
 
@@ -477,6 +510,7 @@ bool MainWindow::killGstLaunch( )
     }
     while( !done );
     // <<<<< Kill gst-launch-1.0 processes
+#endif // Q_OS_WIN
 
     return true;
 }
@@ -484,7 +518,7 @@ bool MainWindow::killGstLaunch( )
 bool MainWindow::startGstProcess( )
 {
     // TODO handle command line analogously to https://github.com/GStreamer/gst-plugins-base/blob/master/tools/gst-device-monitor.c
-    if( mCamDev.size()==0 ) {
+    if(mCameras.empty()) {
         return false;
     }
 
@@ -492,33 +526,32 @@ bool MainWindow::startGstProcess( )
 
 #ifdef USE_ARM
     launchStr = QStringLiteral(
-                "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
+                "gst-launch-1.0 %1 do-timestamp=true ! "
                 "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
                 "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
                 //"omxh264enc low-latency=true insert-sps-pps=true ! "
                 "omxh264enc insert-sps-pps=true ! "
                 "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                 "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
-                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+                ).arg(mLaunchLine).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #elif defined(Q_OS_WIN)
     launchStr =
-        QStringLiteral("gst-launch-1.0.exe ksvideosrc ! "
-            "video/x-raw,format=I420,width=%1,height=%2,framerate=%3/1 ! videoconvert ! "
+        QStringLiteral("gst-launch-1.0.exe %1 ! "
+            "video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5 ! videoconvert ! "
             //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
             "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
             "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
             "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
-        //.arg(mCamDev)
-        .arg(mSrcWidth).arg(mSrcHeight).arg(std::lround(mSrcFps));
+        .arg(mLaunchLine).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #else
     launchStr =
-        QStringLiteral("gst-launch-1.0 v4l2src device=%1 ! "
+        QStringLiteral("gst-launch-1.0 %1 ! "
                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
                //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
                "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
                "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
-            .arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+            .arg(mLaunchLine).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);
@@ -774,9 +807,12 @@ void MainWindow::on_pushButton_load_params_clicked()
         fs["FishEye"] >> fisheye;
         fs["Alpha"] >> alpha;
 
+        const auto& camera = mCameras[ui->comboBox_camera->currentIndex()];
+
         bool matched = false;
-        for( int i=0; i<ui->comboBox_camera_res->count(); i++ )
+        for( int i = 0; i < camera.modes.size(); i++ )
         {
+            /*
             QString descr = ui->comboBox_camera_res->itemText( i );
 
             int w1;
@@ -786,8 +822,12 @@ void MainWindow::on_pushButton_load_params_clicked()
             int den;
 
             V4L2CompCamera::descr2params( descr, w1,h1,fps,num,den );
+            */
 
-            if( w==w1 && h==h1 )
+            const auto& mode = camera.modes[ui->comboBox_camera_res->currentIndex()];
+
+
+            if( mode.w==w && mode.h==h )
             {
                 matched=true;
                 ui->comboBox_camera_res->setCurrentIndex(i);
@@ -873,6 +913,7 @@ void MainWindow::on_pushButton_save_params_clicked()
     }
 }
 
+/*
 void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
 {
     QList<V4L2CompCamera> fmtList = V4L2CompCamera::enumCompFormats( arg1 );
@@ -884,6 +925,7 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
         ui->comboBox_camera_res->addItem( fmt.getDescr() );
     }
 }
+*/
 
 void MainWindow::on_horizontalSlider_alpha_valueChanged(int value)
 {

@@ -3,12 +3,13 @@
 
 #include <QMainWindow>
 #include <QLabel>
-#include <QCameraInfo>
 #include <QProcess>
 #include <QThreadPool>
 #include <QSound>
 
 #include <opencv2/core/core.hpp>
+
+#include "cameraman.h"
 
 class CameraThread;
 class QOpenCVScene;
@@ -79,7 +80,7 @@ private slots:
     void on_pushButton_load_params_clicked();
     void on_pushButton_save_params_clicked();
 
-    void on_comboBox_camera_currentIndexChanged(const QString &arg1);
+    //void on_comboBox_camera_currentIndexChanged(const QString &arg1);
 
     void on_horizontalSlider_alpha_valueChanged(int value);
 
@@ -93,7 +94,7 @@ private:
 
     QProcess mGstProcess;
 
-    QList<QCameraInfo> mCameras;
+    std::vector<CameraDesc> mCameras;
     CameraThread* mCameraThread;
     bool mCameraConnected;
 
@@ -103,7 +104,8 @@ private:
 
     cv::Mat mLastFrame;
 
-    QString mCamDev;
+    QString mLaunchLine;
+
     int mSrcWidth;
     int mSrcHeight;
     double mSrcFps;
