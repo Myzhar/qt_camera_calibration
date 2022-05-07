@@ -80,8 +80,6 @@ private slots:
     void on_pushButton_load_params_clicked();
     void on_pushButton_save_params_clicked();
 
-    //void on_comboBox_camera_currentIndexChanged(const QString &arg1);
-
     void on_horizontalSlider_alpha_valueChanged(int value);
 
     void on_checkBox_fisheye_clicked(bool checked);

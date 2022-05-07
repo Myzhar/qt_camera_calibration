@@ -21,7 +21,6 @@
 
 #include <iostream>
 
-//#include <v4l2compcamera.h>
 
 using namespace std;
 
@@ -77,14 +76,6 @@ MainWindow::MainWindow(QWidget *parent) :
     // <<<<< Stream rendering
 
     mElabPool.setMaxThreadCount( 3 );
-
-    //int w;
-    //int h;
-    //double fps;
-    //int num;
-    //int den;
-
-    //V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 }
 
 MainWindow::~MainWindow()
@@ -117,15 +108,6 @@ QString MainWindow::updateOpenCvVer()
 QStringList MainWindow::updateCameraInfo()
 {
     QStringList res;
-
-    //mCameras = QCameraInfo::availableCameras();
-    //foreach (const QCameraInfo &cameraInfo, mCameras)
-    //{
-    //    QString name = cameraInfo.deviceName();
-    //    qDebug() << cameraInfo.description();
-
-    //    res.push_back(name);
-    //}
 
     mCameras = getCameraDescriptions();
     for (const auto& cameraInfo : mCameras)
@@ -182,16 +164,6 @@ bool MainWindow::startCamera()
 
     delete mCameraThread;
     mCameraThread = nullptr;
-
-    /*
-    int w;
-    int h;
-    double fps;
-    int num;
-    int den;
-
-    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
-    */
 
     const auto& mode = mCameras[ui->comboBox_camera->currentIndex()].modes[ui->comboBox_camera_res->currentIndex()];
 
@@ -359,18 +331,6 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 {
     if( checked )
     {
-        /*
-        mCamDev = ui->comboBox_camera->currentText();
-
-        int w;
-        int h;
-        double fps;
-        int num;
-        int den;
-
-        V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
-        */
-
         const auto& mCamera = mCameras[ui->comboBox_camera->currentIndex()];
         const auto& mode = mCamera.modes[ui->comboBox_camera_res->currentIndex()];
 
@@ -517,7 +477,7 @@ bool MainWindow::killGstLaunch( )
 
 bool MainWindow::startGstProcess( )
 {
-    // TODO handle command line analogously to https://github.com/GStreamer/gst-plugins-base/blob/master/tools/gst-device-monitor.c
+    // handle command line analogously to https://github.com/GStreamer/gst-plugins-base/blob/master/tools/gst-device-monitor.c
     if(mCameras.empty()) {
         return false;
     }
@@ -812,20 +772,7 @@ void MainWindow::on_pushButton_load_params_clicked()
         bool matched = false;
         for( int i = 0; i < camera.modes.size(); i++ )
         {
-            /*
-            QString descr = ui->comboBox_camera_res->itemText( i );
-
-            int w1;
-            int h1;
-            double fps;
-            int num;
-            int den;
-
-            V4L2CompCamera::descr2params( descr, w1,h1,fps,num,den );
-            */
-
             const auto& mode = camera.modes[ui->comboBox_camera_res->currentIndex()];
-
 
             if( mode.w==w && mode.h==h )
             {
@@ -913,19 +860,6 @@ void MainWindow::on_pushButton_save_params_clicked()
     }
 }
 
-/*
-void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
-{
-    QList<V4L2CompCamera> fmtList = V4L2CompCamera::enumCompFormats( arg1 );
-
-    ui->comboBox_camera_res->clear();
-
-    foreach (V4L2CompCamera fmt, fmtList)
-    {
-        ui->comboBox_camera_res->addItem( fmt.getDescr() );
-    }
-}
-*/
 
 void MainWindow::on_horizontalSlider_alpha_valueChanged(int value)
 {
