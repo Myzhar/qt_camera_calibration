@@ -251,14 +251,10 @@ std::vector<CameraDesc> getCameraDescriptions()
     auto dev = gst_device_monitor_get_devices(monitor);
 
     // loop for the lists
-    GList *cur = g_list_first(dev);
-    while (cur != nullptr)
+    for (GList *cur = g_list_first(dev); cur != nullptr; cur = g_list_next(cur))
     {
-        auto * device = (GstDevice *)cur->data;
-
+        auto * device = static_cast<GstDevice *>(cur->data);
         print_device(device, result);
-
-        cur = g_list_next(cur);
     }
     gst_object_unref(monitor);
 
