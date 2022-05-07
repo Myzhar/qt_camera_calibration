@@ -9,60 +9,61 @@ namespace {
 gchar* get_launch_line(GstDevice * device)
 {
     static const char *const ignored_propnames[] =
-    { "name", "parent", "direction", "template", "caps", NULL };
-    GString *launch_line;
-    GstElement *element;
-    GstElement *pureelement;
-    GParamSpec **properties, *property;
-    GValue value = G_VALUE_INIT;
-    GValue pvalue = G_VALUE_INIT;
-    guint i, number_of_properties;
-    GstElementFactory *factory;
+    { "name", "parent", "direction", "template", "caps", nullptr };
 
-    element = gst_device_create_element(device, NULL);
+    auto element = gst_device_create_element(device, nullptr);
 
-    if (!element)
-        return NULL;
+    if (!element) {
+        return nullptr;
+    }
 
-    factory = gst_element_get_factory(element);
+    auto factory = gst_element_get_factory(element);
     if (!factory) {
         gst_object_unref(element);
-        return NULL;
+        return nullptr;
     }
 
     if (!gst_plugin_feature_get_name(factory)) {
         gst_object_unref(element);
-        return NULL;
+        return nullptr;
     }
 
-    launch_line = g_string_new(gst_plugin_feature_get_name(factory));
+    auto launch_line = g_string_new(gst_plugin_feature_get_name(factory));
 
-    pureelement = gst_element_factory_create(factory, NULL);
+    auto pureelement = gst_element_factory_create(factory, nullptr);
 
     /* get paramspecs and show non-default properties */
-    properties =
+    guint number_of_properties;
+    auto properties =
         g_object_class_list_properties(G_OBJECT_GET_CLASS(element),
             &number_of_properties);
     if (properties) {
-        for (i = 0; i < number_of_properties; i++) {
-            gint j;
-            gboolean ignore = FALSE;
-            property = properties[i];
+        GValue value = G_VALUE_INIT;
+        GValue pvalue = G_VALUE_INIT;
+
+        for (int i = 0; i < number_of_properties; i++) {
+            bool ignore = false;
+            auto property = properties[i];
 
             /* skip some properties */
-            if ((property->flags & G_PARAM_READWRITE) != G_PARAM_READWRITE)
+            if ((property->flags & G_PARAM_READWRITE) != G_PARAM_READWRITE) {
                 continue;
+            }
 
-            for (j = 0; ignored_propnames[j]; j++)
-                if (!g_strcmp0(ignored_propnames[j], property->name))
-                    ignore = TRUE;
+            for (int j = 0; ignored_propnames[j]; j++) {
+                if (!g_strcmp0(ignored_propnames[j], property->name)) {
+                    ignore = true;
+                    break;
+                }
+            }
 
-            if (ignore)
+            if (ignore) {
                 continue;
+            }
 
             /* Can't use _param_value_defaults () because sub-classes modify the
-             * values already.
-             */
+                * values already.
+                */
 
             g_value_init(&value, property->value_type);
             g_value_init(&pvalue, property->value_type);
@@ -100,11 +101,12 @@ gchar* get_launch_line(GstDevice * device)
 
 void unescape_value_string(gchar * s)
 {
-    if (*s == 0)
+    if (*s == 0) {
         return;
+    }
 
     if (*s != '"') {
-        return ;
+        return;
     }
 
     /* Find the closing quotes */
@@ -112,12 +114,14 @@ void unescape_value_string(gchar * s)
     s++;
 
     while (*s != '"') {
-        if (*s == 0)
+        if (*s == 0) {
             break;
+        }
         if (*s == '\\') {
             s++;
-            if (*s == 0)
+            if (*s == 0) {
                 break;
+            }
         }
         *w = *s;
         w++;
@@ -145,8 +149,8 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
         const char * path = gst_structure_get_string(props, "device.path");
         desc.id = path;
         gst_structure_free(props);
-    } 
-    else if (auto element = gst_device_create_element(device, NULL))
+    }
+    else if (auto element = gst_device_create_element(device, nullptr))
     {
         GValue value = G_VALUE_INIT;
         g_object_get_property(G_OBJECT(element), "device-path", &value);
@@ -248,9 +252,9 @@ std::vector<CameraDesc> getCameraDescriptions()
 
     // loop for the lists
     GList *cur = g_list_first(dev);
-    while (cur != NULL)
+    while (cur != nullptr)
     {
-        GstDevice * device = (GstDevice *)cur->data;
+        auto * device = (GstDevice *)cur->data;
 
         print_device(device, result);
 
