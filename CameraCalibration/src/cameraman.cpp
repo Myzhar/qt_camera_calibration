@@ -335,15 +335,15 @@ GstDeviceMonitor *device_monitor()
     monitor = gst_device_monitor_new();
 
     // starts the bus for the monitor
-    bus = gst_device_monitor_get_bus(monitor);
-    gst_object_unref(bus);
+    //bus = gst_device_monitor_get_bus(monitor);
+    //gst_object_unref(bus);
 
     // adds a filter to scan for only video devices
     caps = gst_caps_new_empty_simple("video/x-raw");
     gst_device_monitor_add_filter(monitor, "Video/Source", caps);
     gst_caps_unref(caps);
 
-    const auto ok = gst_device_monitor_start(monitor);
+    //const auto ok = gst_device_monitor_start(monitor);
 
     return monitor;
 }
@@ -405,7 +405,7 @@ std::vector<CameraDesc> getCameraDescriptions()
 
         cur = g_list_next(cur);
     }
-    gst_device_monitor_stop(monitor);
+    //gst_device_monitor_stop(monitor);
     gst_object_unref(monitor);
 
     return result;
