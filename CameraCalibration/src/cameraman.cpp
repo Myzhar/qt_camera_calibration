@@ -178,7 +178,6 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
                 {
                     mode.den = gst_value_get_fraction_numerator(framerates);
                     mode.num = gst_value_get_fraction_denominator(framerates);
-                    mode.fps = double(mode.den) / mode.num;
 
                     desc.modes.push_back(mode);
                 }
@@ -191,7 +190,6 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
                         value = gst_value_list_get_value(framerates, i);
                         mode.den = gst_value_get_fraction_numerator(value);
                         mode.num = gst_value_get_fraction_denominator(value);
-                        mode.fps = double(mode.den) / mode.num;
 
                         desc.modes.push_back(mode);
                     }
@@ -212,7 +210,6 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
                         {
                             mode.den = i;
                             mode.num = j;
-                            mode.fps = double(mode.den) / mode.num;
 
                             desc.modes.push_back(mode);
                         }
@@ -261,7 +258,13 @@ std::vector<CameraDesc> getCameraDescriptions()
     return result;
 }
 
+
+double CameraMode::fps() const
+{
+    return static_cast<double>(den) / num;
+}
+
 QString CameraMode::getDescr() const
 {
-    return QObject::tr("%1 x %2 @ %3 FPS [ %4 / %5 sec ]").arg(w).arg(h).arg(fps).arg(num).arg(den);
+    return QObject::tr("%1 x %2 @ %3 FPS [ %4 / %5 sec ]").arg(w).arg(h).arg(fps()).arg(num).arg(den);
 }

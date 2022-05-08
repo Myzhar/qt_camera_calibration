@@ -167,7 +167,7 @@ bool MainWindow::startCamera()
 
     const auto& mode = mCameras[ui->comboBox_camera->currentIndex()].modes[ui->comboBox_camera_res->currentIndex()];
 
-    mCameraThread = new CameraThread(mode.fps);
+    mCameraThread = new CameraThread(mode.fps());
 
     connect( mCameraThread, &CameraThread::cameraConnected,
              this, &MainWindow::onCameraConnected );
@@ -338,7 +338,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         mSrcWidth = mode.w;
         mSrcHeight = mode.h;
-        mSrcFps = mode.fps;
+        mSrcFps = mode.fps();
         mSrcFpsNum = mode.num;
         mSrcFpsDen = mode.den;
 

@@ -7,10 +7,10 @@ struct CameraMode
 {
     int w;
     int h;
-    double fps;
     int num;
     int den;
 
+    double fps() const;
     QString getDescr() const;
 };
 
