@@ -158,15 +158,15 @@ bool GstSinkOpenCV::init( int timeout_sec )
 
                 memcpy( frame.data, map.data, map.size );
 
-                mFrameMutex.lock();
-                mFrameBuffer.push( frame );
-                mFrameMutex.unlock();
-
-                if( mDebug )
+                if (mDebug)
                 {
-                    cv::imshow( "First Frame", frame );
-                    cv::waitKey( 5 );
+                    cv::imshow("First Frame", frame);
+                    cv::waitKey(5);
                 }
+
+                mFrameMutex.lock();
+                mFrameBuffer.push( std::move(frame) );
+                mFrameMutex.unlock();
             }
 
             gst_buffer_unmap (buffer, &map);
@@ -260,15 +260,15 @@ GstFlowReturn GstSinkOpenCV::on_new_sample_from_sink( GstElement* elt, GstSinkOp
 
                 memcpy( frame.data, map.data, map.size );
 
-                sinkData->mFrameBuffer.push( frame );
+                if (sinkData->mDebug)
+                {
+                    cv::imshow("New frame", frame);
+                }
+
+                sinkData->mFrameBuffer.push( std::move(frame) );
 
                 //std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
                 //std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() <<std::endl;
-
-                if( sinkData->mDebug )
-                {
-                    cv::imshow( "New frame", frame );
-                }
             }
             else
             {
@@ -304,12 +304,10 @@ cv::Mat GstSinkOpenCV::getLastFrame()
 {
     if( mFrameBuffer.empty() ) {
         return {};
-}
-
-    cv::Mat frame;
+    }
 
     mFrameMutex.lock();
-    frame = mFrameBuffer.front();
+    cv::Mat frame = std::move(mFrameBuffer.front());
     mFrameBuffer.pop();
     mFrameMutex.unlock();
 

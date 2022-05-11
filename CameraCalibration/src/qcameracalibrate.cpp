@@ -2,6 +2,7 @@
 
 #include <QtGlobal>
 #include <QDebug>
+#include <QMutexLocker>
 
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -62,7 +63,7 @@ void QCameraCalibrate::getCameraParams( cv::Size& imgSize, cv::Mat &K, cv::Mat &
 {
     if( !mUndistort ) {
         return;
-}
+    }
 
     mUndistort->getCameraParams( imgSize, fisheye, K, D, alpha );
 }
@@ -71,7 +72,7 @@ bool QCameraCalibrate::setCameraParams(cv::Size imgSize, cv::Mat &K, cv::Mat &D,
 {
     if( !mUndistort ) {
         return false;
-}
+    }
 
     mImgSize = std::move(imgSize);
 
@@ -91,7 +92,7 @@ bool QCameraCalibrate::setCameraParams(cv::Size imgSize, cv::Mat &K, cv::Mat &D,
 
 void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
 {
-    mMutex.lock();
+    QMutexLocker locker(&mMutex);
 
     if( (int)mObjCornersVec.size() == mRefineThresh )
     {
@@ -167,17 +168,15 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
 
         mCoeffReady = true;
     }
-
-    mMutex.unlock();
 }
 
 cv::Mat QCameraCalibrate::undistort(cv::Mat& raw)
 {
     if(!mCoeffReady) {
         return {};
-}
+    }
 
-    mMutex.lock();
+    QMutexLocker locker(&mMutex);
 
     cv::Mat res;
 
@@ -185,8 +184,6 @@ cv::Mat QCameraCalibrate::undistort(cv::Mat& raw)
     {
         res = mUndistort->undistort( raw );
     }
-
-    mMutex.unlock();
 
     return res;
 }
