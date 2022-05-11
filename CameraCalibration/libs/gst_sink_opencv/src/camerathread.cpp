@@ -64,7 +64,7 @@ void CameraThread::run()
         if( !frame.empty() && !frame.rows==0 && !frame.cols==0 )
         {
             emit newImage( frame );
-            msleep( 1000.0/mFps );
+            msleep( 500.0/mFps );
         }
         else
         {
