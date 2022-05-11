@@ -144,12 +144,18 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
     desc.launchLine = str;
     g_free(str);
 
+    bool has_id = false;
+
     if (auto props = gst_device_get_properties(device))
     {
-        const char * path = gst_structure_get_string(props, "device.path");
-        desc.id = path;
+        if (const char * path = gst_structure_get_string(props, "device.path"))
+        {
+            desc.id = path;
+            has_id = true;
+        }
         gst_structure_free(props);
     }
+    if (has_id) {}
     else if (auto element = gst_device_create_element(device, nullptr))
     {
         GValue value = G_VALUE_INIT;
