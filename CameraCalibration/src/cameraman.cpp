@@ -136,10 +136,6 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
 {
     CameraDesc desc;
 
-    auto name = gst_device_get_display_name(device);
-    desc.description = name;
-    g_free(name);
-
     auto str = get_launch_line(device);
     desc.launchLine = str;
     g_free(str);
@@ -165,10 +161,20 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
             unescape_value_string(valuestr);
             desc.id = valuestr;
             g_free(valuestr);
+            has_id = true;
         }
         g_value_unset(&value);
         gst_object_unref(element);
     }
+
+    auto name = gst_device_get_display_name(device);
+    desc.description = name;
+    if (!has_id)
+    {
+        desc.id = name;
+    }
+    g_free(name);
+
 
     if (auto caps = gst_device_get_caps(device))
     {
