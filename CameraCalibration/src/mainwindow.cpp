@@ -128,11 +128,11 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
 {
     if( mCameras.empty() ) {
         return;
-}
+    }
 
     if( index>mCameras.size()-1  ) {
         return;
-}
+    }
 
     if( index<0 )
     {
@@ -749,7 +749,7 @@ void MainWindow::on_pushButton_load_params_clicked()
 
     if( fileName.isEmpty() ) {
         return;
-}
+    }
 
     // Not using the function from CameraUndistort to verify that they are coherent before setting them
 
@@ -810,7 +810,7 @@ void MainWindow::on_pushButton_save_params_clicked()
 {
     if( !mCameraCalib ) {
         return;
-}
+    }
 
     QString selFilter;
 
@@ -823,7 +823,7 @@ void MainWindow::on_pushButton_save_params_clicked()
 
     if( fileName.isEmpty() ) {
         return;
-}
+    }
 
     if( !fileName.endsWith( ".yaml", Qt::CaseInsensitive) &&
             !fileName.endsWith( ".yml", Qt::CaseInsensitive) &&
