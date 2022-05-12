@@ -29,6 +29,8 @@ else()
 	message( FATAL_ERROR "GStreamer not found." )
 endif()
 
+# Generate rules for building source files from the resources
+qt5_add_resources(QRCS resources.qrc)
 
 
 add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
@@ -52,6 +54,7 @@ add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
 #    src/v4l2compcamera.cpp
     src/cameraman.cpp
     src/mainwindow.ui
+    ${QRCS}
 )
 target_include_directories(CameraCalibration PUBLIC
     #/include
