@@ -277,7 +277,6 @@ GstFlowReturn GstSinkOpenCV::on_new_sample_from_sink( GstElement* elt, GstSinkOp
             sinkData->mFrameMutex.unlock();
 
 
-
             gst_buffer_unmap (buffer, &map);
         }
         gst_sample_unref (sample);
@@ -302,13 +301,14 @@ double GstSinkOpenCV::getBufPerc()
 
 cv::Mat GstSinkOpenCV::getLastFrame()
 {
-    if( mFrameBuffer.empty() ) {
-        return {};
-    }
+    cv::Mat frame;
 
     mFrameMutex.lock();
-    cv::Mat frame = std::move(mFrameBuffer.front());
-    mFrameBuffer.pop();
+    if (!mFrameBuffer.empty())
+    {
+        frame = std::move(mFrameBuffer.front());
+        mFrameBuffer.pop();
+    }
     mFrameMutex.unlock();
 
     return frame;
