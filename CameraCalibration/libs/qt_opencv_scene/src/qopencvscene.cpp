@@ -42,7 +42,7 @@ void QOpenCVScene::setFgImage( cv::Mat& cvImg )
     }
     else {
         mBgPixmapItem->setPixmap( cvMatToQPixmap(cvImg) );
-}
+    }
 
     //cv::imshow( "Test", cvImg );
     //qDebug() << tr("Image: %1 x %2").arg(cvImg.cols).arg(cvImg.rows);
@@ -105,7 +105,7 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         {
             for ( int i = 0; i < 256; ++i ) {
                 sColorTable.push_back( qRgb( i, i, i ) );
-}
+            }
         }
 
         QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_Indexed8 );
