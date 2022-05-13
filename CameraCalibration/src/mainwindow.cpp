@@ -40,6 +40,8 @@ MainWindow::MainWindow(QWidget *parent) :
     mCameraCalib(nullptr),
     mCbDetectedSnd(nullptr)
 {
+    setWindowIcon(QIcon(":/icon.ico"));
+
     ui->setupUi(this);
 
     killGstLaunch();
