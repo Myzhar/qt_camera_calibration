@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSound>
+#include <QSettings>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -20,6 +21,11 @@
 #include "qcameracalibrate.h"
 
 #include <iostream>
+
+
+const auto SETTING_CB_COLS = QStringLiteral("ChessboardCols");
+const auto SETTING_CB_ROWS = QStringLiteral("ChessboardRows");
+const auto SETTING_CB_SIZE = QStringLiteral("ChessboardSize");
 
 
 using namespace std;
@@ -75,11 +81,21 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // <<<<< Stream rendering
 
+    QSettings settings;
+    ui->lineEdit_cb_cols->setText(settings.value(SETTING_CB_COLS, 10).toString());
+    ui->lineEdit_cb_rows->setText(settings.value(SETTING_CB_ROWS, 7).toString());
+    ui->lineEdit_cb_mm->setText(settings.value(SETTING_CB_SIZE, 25).toString());
+
     mElabPool.setMaxThreadCount( 3 );
 }
 
 MainWindow::~MainWindow()
 {
+    QSettings settings;
+    settings.setValue(SETTING_CB_COLS, ui->lineEdit_cb_cols->text());
+    settings.setValue(SETTING_CB_ROWS, ui->lineEdit_cb_rows->text());
+    settings.setValue(SETTING_CB_SIZE, ui->lineEdit_cb_mm->text());
+
     killGstLaunch();
 
     while( mGstProcess.state() == QProcess::Running )

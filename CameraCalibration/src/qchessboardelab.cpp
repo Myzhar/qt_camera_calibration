@@ -62,7 +62,7 @@ void QChessboardElab::run()
 
         int numSquares = mCbSize.width*mCbSize.height;
         obj.reserve(numSquares);
-for(int j=0;j<numSquares;j++)
+        for(int j=0;j<numSquares;j++)
         {
             obj.emplace_back((j/mCbSize.width)*mCbSizeMm, (j%mCbSize.width)*mCbSizeMm, 0.0F);
         }
