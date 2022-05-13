@@ -893,14 +893,14 @@ void MainWindow::on_checkBox_fisheye_clicked(bool checked)
     if( mCameraCalib )
     {
         mCameraCalib->setFisheye( checked );
+
+        cv::Size imgSize;
+        cv::Mat K;
+        cv::Mat D;
+        bool fisheye;
+        double alpha;
+
+        mCameraCalib->getCameraParams(imgSize, K, D, alpha, fisheye);
+        updateParamGUI(K, D);
     }
-    cv::Size imgSize;
-    cv::Mat K;
-    cv::Mat D;
-    bool fisheye;
-    double alpha;
-
-    mCameraCalib->getCameraParams( imgSize,K,D,alpha,fisheye );
-
-    updateParamGUI( K,D );
 }
