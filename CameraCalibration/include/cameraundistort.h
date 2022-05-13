@@ -25,9 +25,9 @@ public:
 private:
     cv::Size mImgSize;
 
-    bool mFishEye;
+    bool mFishEye{};
 
-    double mAlpha;
+    double mAlpha{};
 
     cv::Mat mIntrinsic;
     cv::Mat mDistCoeffs; // 4x1 if FishEye, 4x1 or 8x1 if not Fisheye

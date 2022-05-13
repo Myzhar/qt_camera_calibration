@@ -33,9 +33,9 @@ private:
 
     std::queue<cv::Mat> mFrameBuffer;
 
-    int mWidth;
-    int mHeight;
-    int mChannels;
+    int mWidth{};
+    int mHeight{};
+    int mChannels{};
 
     bool mDebug;
 

@@ -104,14 +104,14 @@ private:
 
     QString mLaunchLine;
 
-    int mSrcWidth;
-    int mSrcHeight;
-    double mSrcFps;
-    int mSrcFpsNum;
-    int mSrcFpsDen;
+    int mSrcWidth{};
+    int mSrcHeight{};
+    double mSrcFps{};
+    int mSrcFpsNum{};
+    int mSrcFpsDen{};
 
-    cv::Size mCbSize;
-    float mCbSizeMm;
+    cv::Size mCbSize{};
+    float mCbSizeMm{};
 
     QThreadPool mElabPool;
 

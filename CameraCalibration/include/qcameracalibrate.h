@@ -48,7 +48,7 @@ private:
 
     std::vector<cv::Point3f> mDefObjCorners;
 
-    int mCalibFlags;
+    int mCalibFlags{};
 
     //cv::Mat mIntrinsic;
     //cv::Mat mDistCoeffs;
