@@ -26,6 +26,7 @@
 const auto SETTING_CB_COLS = QStringLiteral("ChessboardCols");
 const auto SETTING_CB_ROWS = QStringLiteral("ChessboardRows");
 const auto SETTING_CB_SIZE = QStringLiteral("ChessboardSize");
+const auto SETTING_CB_MAX_COUNT = QStringLiteral("ChessboardMaxCount");
 
 
 using namespace std;
@@ -83,10 +84,30 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // <<<<< Stream rendering
 
+    ui->lineEdit_cb_cols->setValidator(new QIntValidator(2, 99, this));
+    ui->lineEdit_cb_rows->setValidator(new QIntValidator(2, 99, this));
+    ui->lineEdit_cb_mm->setValidator(new QIntValidator(1, 999, this));
+    ui->lineEdit_cb_max_count->setValidator(new QIntValidator(10, 99, this));
+
+    auto validationErrorLam = [this] {
+        QMessageBox::warning(this, tr("Validation error"), tr("Please provide a correct value."));
+    };
+
+    for (auto edit : {
+            ui->lineEdit_cb_cols,
+            ui->lineEdit_cb_rows,
+            ui->lineEdit_cb_mm,
+            ui->lineEdit_cb_max_count
+        })
+    {
+        connect(edit, &CustomLineEdit::validationError, validationErrorLam);
+    }
+
     QSettings settings;
     ui->lineEdit_cb_cols->setText(settings.value(SETTING_CB_COLS, 10).toString());
     ui->lineEdit_cb_rows->setText(settings.value(SETTING_CB_ROWS, 7).toString());
     ui->lineEdit_cb_mm->setText(settings.value(SETTING_CB_SIZE, 25).toString());
+    ui->lineEdit_cb_max_count->setText(settings.value(SETTING_CB_MAX_COUNT, 10).toString());
 
     mElabPool.setMaxThreadCount( 3 );
 }
@@ -97,6 +118,7 @@ MainWindow::~MainWindow()
     settings.setValue(SETTING_CB_COLS, ui->lineEdit_cb_cols->text());
     settings.setValue(SETTING_CB_ROWS, ui->lineEdit_cb_rows->text());
     settings.setValue(SETTING_CB_SIZE, ui->lineEdit_cb_mm->text());
+    settings.setValue(SETTING_CB_MAX_COUNT, ui->lineEdit_cb_max_count->text());
 
     killGstLaunch();
 
@@ -372,7 +394,8 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         bool fisheye = ui->checkBox_fisheye->isChecked();
 
-        mCameraCalib = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
+        const int maxCount = ui->lineEdit_cb_max_count->text().toInt();
+        mCameraCalib = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye, maxCount );
 
         connect( mCameraCalib, &QCameraCalibrate::newCameraParams,
                  this, &MainWindow::onNewCameraParams );

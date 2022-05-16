@@ -978,7 +978,7 @@ minor than 1 px</string>
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="lineEdit_cb_cols">
+                <widget class="CustomLineEdit" name="lineEdit_cb_cols">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -992,7 +992,7 @@ minor than 1 px</string>
                   </size>
                  </property>
                  <property name="toolTip">
-                  <string>Number of horizontal chessboard edges</string>
+                  <string>Number of horizontal inner chessboard edges</string>
                  </property>
                  <property name="text">
                   <string>10</string>
@@ -1029,7 +1029,7 @@ minor than 1 px</string>
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="lineEdit_cb_rows">
+                <widget class="CustomLineEdit" name="lineEdit_cb_rows">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -1043,7 +1043,7 @@ minor than 1 px</string>
                   </size>
                  </property>
                  <property name="toolTip">
-                  <string>Number of vertical chessboard edges</string>
+                  <string>Number of vertical inner chessboard edges</string>
                  </property>
                  <property name="text">
                   <string>7</string>
@@ -1080,7 +1080,7 @@ minor than 1 px</string>
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="lineEdit_cb_mm">
+                <widget class="CustomLineEdit" name="lineEdit_cb_mm">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -1131,7 +1131,7 @@ minor than 1 px</string>
                 </widget>
                </item>
                <item>
-                <widget class="QLineEdit" name="lineEdit_cb_max_count">
+                <widget class="CustomLineEdit" name="lineEdit_cb_max_count">
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -1218,6 +1218,13 @@ are used to refine the parameters</string>
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>CustomLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>CustomLineEdit.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

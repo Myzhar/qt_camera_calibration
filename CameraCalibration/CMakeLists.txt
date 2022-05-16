@@ -40,6 +40,7 @@ add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
     include/qchessboardelab.h
 #    include/v4l2compcamera.h
     include/cameraman.h
+    include/CustomLineEdit.h
     libs/gst_sink_opencv/include/camerathread.h
     libs/gst_sink_opencv/include/gst_sink_opencv.hpp
     libs/gst_sink_opencv/src/camerathread.cpp
@@ -53,6 +54,7 @@ add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
     src/qchessboardelab.cpp
 #    src/v4l2compcamera.cpp
     src/cameraman.cpp
+    src/CustomLineEdit.cpp
     src/mainwindow.ui
     ${QRCS}
 )
