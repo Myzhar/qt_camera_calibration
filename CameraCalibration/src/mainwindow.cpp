@@ -263,10 +263,14 @@ void MainWindow::onCameraDisconnected()
     ui->pushButton_load_params->setEnabled(true);
     ui->pushButton_save_params->setEnabled(false);
 
-    QMessageBox::warning( this, tr("Camera error"), tr("Camera disconnected\n"
-                                                       "If the camera has been just started\n"
-                                                       "please verify the correctness of\n"
-                                                       "Width, Height and FPS"));
+    mGstProcessOutputMutex.lock();
+    QString output = mGstProcessOutput;
+    mGstProcessOutputMutex.unlock();
+
+    QMessageBox::warning( this, tr("Camera disconnected"), 
+        tr("If the camera has been just started please verify\n"
+        "the correctness of Width, Height and FPS\n"
+        "Process output:\n") + output.right(1000).trimmed());
 }
 
 void MainWindow::onNewImage( cv::Mat frame )
@@ -559,9 +563,13 @@ bool MainWindow::startGstProcess( )
 
     mGstProcess.setProcessChannelMode( QProcess::MergedChannels );
 
-    connect(&mGstProcess, &QProcess::readyReadStandardOutput, [&pingProcess = this->mGstProcess]() {
-        QString output = pingProcess.readAllStandardOutput();
+    mGstProcessOutput.clear();
+
+    connect(&mGstProcess, &QProcess::readyReadStandardOutput, [this]() {
+        QString output = mGstProcess.readAllStandardOutput();
         qDebug() << "Child process trace: " << output;
+        QMutexLocker locker(&mGstProcessOutputMutex);
+        mGstProcessOutput += output;
     });
 
     mGstProcess.start( launchStr );

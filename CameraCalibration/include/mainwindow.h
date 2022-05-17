@@ -6,6 +6,7 @@
 #include <QProcess>
 #include <QThreadPool>
 #include <QSound>
+#include <QMutex>
 
 #include <opencv2/core/core.hpp>
 
@@ -91,6 +92,9 @@ private:
     QLabel mCalibInfo;
 
     QProcess mGstProcess;
+
+    QString mGstProcessOutput;
+    QMutex mGstProcessOutputMutex;
 
     std::vector<CameraDesc> mCameras;
     CameraThread* mCameraThread;
