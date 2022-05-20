@@ -28,6 +28,7 @@ const auto SETTING_CB_ROWS = QStringLiteral("ChessboardRows");
 const auto SETTING_CB_SIZE = QStringLiteral("ChessboardSize");
 const auto SETTING_CB_MAX_COUNT = QStringLiteral("ChessboardMaxCount");
 
+const auto SETTING_FISHEYE = QStringLiteral("Fisheye");
 
 using namespace std;
 
@@ -109,6 +110,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->lineEdit_cb_mm->setText(settings.value(SETTING_CB_SIZE, 25).toString());
     ui->lineEdit_cb_max_count->setText(settings.value(SETTING_CB_MAX_COUNT, 10).toString());
 
+    ui->checkBox_fisheye->setChecked(settings.value(SETTING_FISHEYE, true).toBool());
+
     mElabPool.setMaxThreadCount( 3 );
 }
 
@@ -119,6 +122,8 @@ MainWindow::~MainWindow()
     settings.setValue(SETTING_CB_ROWS, ui->lineEdit_cb_rows->text());
     settings.setValue(SETTING_CB_SIZE, ui->lineEdit_cb_mm->text());
     settings.setValue(SETTING_CB_MAX_COUNT, ui->lineEdit_cb_max_count->text());
+
+    settings.setValue(SETTING_FISHEYE, ui->checkBox_fisheye->isChecked());
 
     killGstLaunch();
 

@@ -121,7 +121,7 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
         if(fisheye)
         {
             // >>>>> Calibration flags
-            mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
+            int mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
             if( mRefined )
             {
                 mCalibFlags |= cv::fisheye::CALIB_USE_INTRINSIC_GUESS;
@@ -151,7 +151,7 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
         else
         {
             // >>>>> Calibration flags
-            mCalibFlags = cv::CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters
+            int mCalibFlags = cv::CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters
             if( mRefined )
             {
                 mCalibFlags |= cv::CALIB_USE_INTRINSIC_GUESS;

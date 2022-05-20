@@ -48,15 +48,8 @@ private:
 
     std::vector<cv::Point3f> mDefObjCorners;
 
-    int mCalibFlags{};
-
-    //cv::Mat mIntrinsic;
-    //cv::Mat mDistCoeffs;
-
     bool mCoeffReady;
     bool mRefined;
-    //bool mFishEye;
-    //double mAlpha;
 
     cv::Size mImgSize;
     cv::Size mCbSize;
