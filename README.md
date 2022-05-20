@@ -11,9 +11,10 @@ The software support the "standard" Pinhole Camera Model (using 8 distorsion par
 2. If necessary, select a camera.
 3. If necessary, select Resolution and FPS.
 4. Click the "Start Camera" button to start.
-5. If necessary, modify Chessboard parameters (Number of inner corners per a chessboard row and column etc.).
-6. Click "Calibrate" to start calibration.
-7. Click "Calibrate" again when you have finished collecting projection images.
-8. Click "Save" to save the camera settings.
+5. Check / uncheck "Fisheye" checkbox according to the mode required.
+6. If necessary, modify Chessboard parameters (Number of inner corners per a chessboard row and column etc.).
+7. Click "Calibrate" to start calibration.
+8. Click "Calibrate" again when you have finished collecting projection images.
+9. Click "Save" to save the camera settings.
 
 On Camera Calibration with OpenCV: https://docs.opencv.org/4.x/d4/d94/tutorial_camera_calibration.html
