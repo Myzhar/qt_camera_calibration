@@ -180,8 +180,8 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
     {
         const auto size = gst_caps_get_size(caps);
 
-        for (int i = 0; i < size; ++i) {
-            GstStructure *s = gst_caps_get_structure(caps, i);
+        for (int idx = 0; idx < size; ++idx) {
+            GstStructure *s = gst_caps_get_structure(caps, idx);
             CameraMode mode{};
             gst_structure_get_int(s, "width", &mode.w);
             gst_structure_get_int(s, "height", &mode.h);
@@ -196,7 +196,7 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
                 else if (GST_VALUE_HOLDS_LIST(framerates))
                 {
                     const auto num_framerates = gst_value_list_get_size(framerates);
-                    for (i = 0; i < num_framerates; i++)
+                    for (int i = 0; i < num_framerates; ++i)
                     {
                         const GValue *value;
                         value = gst_value_list_get_value(framerates, i);
@@ -216,9 +216,9 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
                     const auto numerator_max = gst_value_get_fraction_numerator(fraction_range_max);
                     const auto denominator_max = gst_value_get_fraction_denominator(fraction_range_max);
 
-                    for (int i = numerator_min; i <= numerator_max; i++)
+                    for (int i = numerator_max; i >= numerator_min; --i)
                     {
-                        for (int j = denominator_min; j <= denominator_max; j++)
+                        for (int j = denominator_min; j <= denominator_max; ++j)
                         {
                             mode.den = i;
                             mode.num = j;
