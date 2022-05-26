@@ -385,6 +385,7 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         mLaunchLine = mCamera.launchLine;
 
+        mSrcFormat = mode.format;
         mSrcWidth = mode.w;
         mSrcHeight = mode.h;
         mSrcFps = mode.fps();
@@ -537,31 +538,31 @@ bool MainWindow::startGstProcess( )
 #ifdef USE_ARM
     launchStr = QStringLiteral(
                 "gst-launch-1.0 %1 do-timestamp=true ! "
-                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
+                "\"video/x-raw,format=%2,width=%3,height=%4,framerate=%5/%6\" ! nvvidconv ! "
                 "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
                 //"omxh264enc low-latency=true insert-sps-pps=true ! "
                 "omxh264enc insert-sps-pps=true ! "
                 "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                 "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
-                ).arg(mLaunchLine).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+                ).arg(mLaunchLine).arg(mSrcFormat).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #elif defined(Q_OS_WIN)
     launchStr =
         QStringLiteral("gst-launch-1.0.exe %1 ! "
-            "video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5 ! videoconvert ! "
+            "video/x-raw,format=%2,width=%3,height=%4,framerate=%5/%6 ! videoconvert ! "
             //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
             "x264enc key-int-max=1 tune=zerolatency ! "//bitrate=8000 ! "
             "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
             "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
-        .arg(mLaunchLine).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+        .arg(mLaunchLine).arg(mSrcFormat).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #else
     launchStr =
         QStringLiteral("gst-launch-1.0 %1 ! "
-               "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
+               "\"video/x-raw,format=%2,width=%3,height=%4,framerate=%5/%6\" ! videoconvert ! "
                //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
                "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
                "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
-            .arg(mLaunchLine).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+            .arg(mLaunchLine).arg(mSrcFormat).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);

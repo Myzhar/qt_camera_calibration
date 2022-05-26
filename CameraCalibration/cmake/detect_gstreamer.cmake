@@ -1,12 +1,14 @@
 # --- GStreamer ---
 if(NOT HAVE_GSTREAMER AND WIN32)
-  set(env_paths "${GSTREAMER_DIR}" ENV GSTREAMER_ROOT)
+  set(env_paths "${GSTREAMER_DIR}" $ENV{GSTREAMER_ROOT})
 
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    list(APPEND env_paths ENV GSTREAMER_1_0_ROOT_X86_64 ENV GSTREAMER_ROOT_X86_64)
+    list(APPEND env_paths $ENV{GSTREAMER_1_0_ROOT_X86_64} $ENV{GSTREAMER_ROOT_X86_64})
   else()
-    list(APPEND env_paths ENV GSTREAMER_1_0_ROOT_X86 ENV GSTREAMER_ROOT_X86)
+    list(APPEND env_paths $ENV{GSTREAMER_1_0_ROOT_X86} $ENV{GSTREAMER_ROOT_X86})
   endif()
+
+  message ("    *** detect_gstreamer.cmake paths: ${env_paths}")
 
   find_path(GSTREAMER_gst_INCLUDE_DIR
     gst/gst.h

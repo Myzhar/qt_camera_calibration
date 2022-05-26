@@ -185,6 +185,10 @@ void print_device(GstDevice * device, std::vector<CameraDesc>& result)
             CameraMode mode{};
             gst_structure_get_int(s, "width", &mode.w);
             gst_structure_get_int(s, "height", &mode.h);
+            if (const char* format = gst_structure_get_string(s, "format"))
+            {
+                mode.format = format;
+            }
             if (auto framerates = gst_structure_get_value(s, "framerate")) {
                 if (GST_VALUE_HOLDS_FRACTION(framerates))
                 {
@@ -278,5 +282,5 @@ double CameraMode::fps() const
 
 QString CameraMode::getDescr() const
 {
-    return QObject::tr("%1 x %2 @ %3 FPS [ %4 / %5 sec ]").arg(w).arg(h).arg(fps()).arg(num).arg(den);
+    return QObject::tr("%1 %2 x %3 @ %4 FPS [ %5 / %6 sec ]").arg(format).arg(w).arg(h).arg(fps()).arg(num).arg(den);
 }

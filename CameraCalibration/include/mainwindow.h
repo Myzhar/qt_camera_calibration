@@ -108,6 +108,7 @@ private:
 
     QString mLaunchLine;
 
+    QString mSrcFormat;
     int mSrcWidth{};
     int mSrcHeight{};
     double mSrcFps{};

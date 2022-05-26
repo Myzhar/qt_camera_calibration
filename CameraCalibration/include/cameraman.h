@@ -10,6 +10,8 @@ struct CameraMode
     int num;
     int den;
 
+    QString format;
+
     double fps() const;
     QString getDescr() const;
 };
