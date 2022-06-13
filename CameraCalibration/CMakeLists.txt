@@ -21,6 +21,26 @@ find_package(Qt${QT_VERSION_MAJOR} OPTIONAL_COMPONENTS Multimedia Widgets)
 
 FIND_PACKAGE( OpenCV 4 REQUIRED )
 
+
+find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
+find_library(AVCODEC_LIBRARY avcodec)
+
+find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h)
+find_library(AVFORMAT_LIBRARY avformat)
+
+find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h)
+find_library(AVUTIL_LIBRARY avutil)
+
+find_path(AVDEVICE_INCLUDE_DIR libavdevice/avdevice.h)
+find_library(AVDEVICE_LIBRARY avdevice)
+
+find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h)
+find_library(SWSCALE_LIBRARY swscale)
+
+find_path(SWRESAMPLE_INCLUDE_DIR libswresample/swresample.h)
+find_library(SWRESAMPLE_LIBRARY swresample)
+
+
 include(cmake/detect_gstreamer.cmake)
 
 if (HAVE_GSTREAMER)
@@ -41,10 +61,13 @@ add_executable(CameraCalibration WIN32 MACOSX_BUNDLE
 #    include/v4l2compcamera.h
     include/cameraman.h
     include/CustomLineEdit.h
+    libs/gst_sink_opencv/include/camerathreadbase.h
     libs/gst_sink_opencv/include/camerathread.h
     libs/gst_sink_opencv/include/gst_sink_opencv.hpp
+    libs/gst_sink_opencv/include/ffmpeg_sink.h
     libs/gst_sink_opencv/src/camerathread.cpp
     libs/gst_sink_opencv/src/gst_sink_opencv.cpp
+    libs/gst_sink_opencv/src/ffmpeg_sink.cpp
     libs/qt_opencv_scene/include/qopencvscene.h
     libs/qt_opencv_scene/src/qopencvscene.cpp
     src/cameraundistort.cpp
@@ -78,6 +101,13 @@ target_link_libraries(CameraCalibration PUBLIC
     Qt${QT_VERSION_MAJOR}::OpenGL
     ${OpenCV_LIBRARIES}
     ${GSTREAMER_LIBRARIES}
+    ${FFMPEG_LIBRARIES} 
+    ${AVCODEC_LIBRARY} 
+    ${AVFORMAT_LIBRARY} 
+    ${AVUTIL_LIBRARY} 
+    ${AVDEVICE_LIBRARY}
+    ${SWSCALE_LIBRARY}
+    ${SWRESAMPLE_LIBRARY}
     #gio-2.0
     #glib-2.0
     #gmodule-2.0

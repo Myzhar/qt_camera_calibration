@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 
 #include "camerathread.h"
+#include "ffmpeg_sink.h"
 #include "qopencvscene.h"
 
 #include <QCameraInfo>
@@ -29,6 +30,12 @@ const auto SETTING_CB_SIZE = QStringLiteral("ChessboardSize");
 const auto SETTING_CB_MAX_COUNT = QStringLiteral("ChessboardMaxCount");
 
 const auto SETTING_FISHEYE = QStringLiteral("Fisheye");
+
+const auto SETTING_USE_FFMPEG = QStringLiteral("UseFFmpeg");
+
+const auto SETTING_FFMPEG_URL = QStringLiteral("FFmpegUrl");
+const auto SETTING_FFMPEG_INPUT_FORMAT = QStringLiteral("FFmpegInputFormat");
+
 
 using namespace std;
 
@@ -112,6 +119,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->checkBox_fisheye->setChecked(settings.value(SETTING_FISHEYE, true).toBool());
 
+    ui->lineEdit_URL->setText(settings.value(SETTING_FFMPEG_URL).toString());
+    ui->lineEdit_InputFormat->setText(settings.value(SETTING_FFMPEG_INPUT_FORMAT).toString());
+
+    (settings.value(SETTING_USE_FFMPEG, false).toBool()
+        ? ui->ffmpegSource : ui->gstreamerSource)->setChecked(true);
+
+
     mElabPool.setMaxThreadCount( 3 );
 }
 
@@ -125,6 +139,11 @@ MainWindow::~MainWindow()
 
     settings.setValue(SETTING_FISHEYE, ui->checkBox_fisheye->isChecked());
 
+    settings.setValue(SETTING_USE_FFMPEG, ui->ffmpegSource->isChecked());
+
+    settings.setValue(SETTING_FFMPEG_URL, ui->lineEdit_URL->text());
+    settings.setValue(SETTING_FFMPEG_INPUT_FORMAT, ui->lineEdit_InputFormat->text());
+
     killGstLaunch();
 
     while( mGstProcess.state() == QProcess::Running )
@@ -136,7 +155,12 @@ MainWindow::~MainWindow()
     mElabPool.clear();
 
     delete ui;
-    delete mCameraThread;
+    if (mCameraThread)
+    {
+        mCameraThread->requestInterruption();
+        mCameraThread->wait();
+        delete mCameraThread;
+    }
     delete mCameraSceneRaw;
     delete mCameraSceneCheckboard;
     delete mCameraSceneUndistorted;
@@ -203,23 +227,45 @@ bool MainWindow::startCamera()
         return false;
     }
 
-    if(!startGstProcess()) {
-        return false;
+    if (mCameraThread)
+    {
+        mCameraThread->requestInterruption();
+        mCameraThread->wait();
+        delete mCameraThread;
+        mCameraThread = nullptr;
     }
 
-    delete mCameraThread;
-    mCameraThread = nullptr;
+    if (ui->ffmpegSource->isChecked())
+    {
+        const auto ffmpegThread = new FFmpegThread(
+            ui->lineEdit_URL->text().toStdString(),
+            ui->lineEdit_InputFormat->text().toStdString());
 
-    const auto& mode = mCameras[ui->comboBox_camera->currentIndex()].modes[ui->comboBox_camera_res->currentIndex()];
+        if (!ffmpegThread->init())
+        {
+            delete ffmpegThread;
+            return false;
+        }
 
-    mCameraThread = new CameraThread(mode.fps());
+        mCameraThread = ffmpegThread;
 
-    connect( mCameraThread, &CameraThread::cameraConnected,
-             this, &MainWindow::onCameraConnected );
-    connect( mCameraThread, &CameraThread::cameraDisconnected,
-             this, &MainWindow::onCameraDisconnected );
-    connect( mCameraThread, &CameraThread::newImage,
-             this, &MainWindow::onNewImage );
+        connect(ffmpegThread, &FFmpegThread::newImage, this, &MainWindow::onNewImage);
+    }
+    else
+    {
+        if (!startGstProcess()) {
+            return false;
+        }
+
+        const auto& mode = mCameras[ui->comboBox_camera->currentIndex()].modes[ui->comboBox_camera_res->currentIndex()];
+
+        const auto cameraThread = new CameraThread(mode.fps());
+        mCameraThread = cameraThread;
+
+        connect(cameraThread, &CameraThread::cameraConnected, this, &MainWindow::onCameraConnected);
+        connect(cameraThread, &CameraThread::cameraDisconnected, this, &MainWindow::onCameraDisconnected);
+        connect(cameraThread, &CameraThread::newImage, this, &MainWindow::onNewImage);
+    }
 
     mCameraThread->start();
 
@@ -232,13 +278,15 @@ void MainWindow::stopCamera()
 
     if( mCameraThread )
     {
-        disconnect( mCameraThread, &CameraThread::cameraConnected,
-                    this, &MainWindow::onCameraConnected );
-        disconnect( mCameraThread, &CameraThread::cameraDisconnected,
-                    this, &MainWindow::onCameraDisconnected );
-        disconnect( mCameraThread, &CameraThread::newImage,
-                    this, &MainWindow::onNewImage );
+        //disconnect( mCameraThread, &CameraThread::cameraConnected,
+        //            this, &MainWindow::onCameraConnected );
+        //disconnect( mCameraThread, &CameraThread::cameraDisconnected,
+        //            this, &MainWindow::onCameraDisconnected );
+        //disconnect( mCameraThread, &CameraThread::newImage,
+        //            this, &MainWindow::onNewImage );
 
+        mCameraThread->requestInterruption();
+        mCameraThread->wait();
         delete mCameraThread;
         mCameraThread = nullptr;
     }
@@ -485,6 +533,9 @@ void MainWindow::onProcessReadyRead()
 
 bool MainWindow::killGstLaunch( )
 {
+    if (mGstProcess.state() != QProcess::Running)
+        return true;
+
     // >>>>> Kill gst-launch-1.0 processes
 
 #ifdef Q_OS_WIN

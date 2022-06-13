@@ -12,7 +12,7 @@
 
 #include "cameraman.h"
 
-class CameraThread;
+class CameraThreadBase;
 class QOpenCVScene;
 
 class QCameraCalibrate;
@@ -97,7 +97,7 @@ private:
     QMutex mGstProcessOutputMutex;
 
     std::vector<CameraDesc> mCameras;
-    CameraThread* mCameraThread;
+    CameraThreadBase* mCameraThread;
     bool mCameraConnected;
 
     QOpenCVScene* mCameraSceneRaw;

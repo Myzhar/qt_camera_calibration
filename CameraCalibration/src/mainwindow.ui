@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1337</width>
+    <width>1465</width>
     <height>989</height>
    </rect>
   </property>
@@ -140,17 +140,43 @@
          <string>Camera</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_4">
-         <item row="4" column="0">
-          <widget class="QProgressBar" name="progressBar_camBuffer">
-           <property name="value">
-            <number>0</number>
-           </property>
-           <property name="format">
-            <string>Camera buffer: %p%</string>
+         <item row="0" column="0">
+          <widget class="QRadioButton" name="gstreamerSource">
+           <property name="text">
+            <string>GStreamer source</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item row="6" column="0">
+          <widget class="QPushButton" name="pushButton_camera_connect_disconnect">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>50</height>
+            </size>
+           </property>
+           <property name="font">
+            <font>
+             <pointsize>14</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="text">
+            <string>Start Camera</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
           <widget class="QLabel" name="label_camera">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
@@ -163,7 +189,111 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="0">
+         <item row="5" column="0">
+          <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <item>
+            <widget class="QLabel" name="label_2">
+              <property name="sizePolicy">
+                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                  <horstretch>0</horstretch>
+                  <verstretch>24</verstretch>
+                </sizepolicy>
+              </property>
+              <property name="minimumSize">
+                <size>
+                  <width>0</width>
+                  <height>24</height>
+                </size>
+              </property>
+              <property name="text">
+              <string>URL</string>
+             </property>
+            </widget>
+           </item>
+
+            <item>
+              <widget class="QLineEdit" name="lineEdit_URL">
+
+                <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>24</verstretch>
+                  </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                  <size>
+                    <width>0</width>
+                    <height>24</height>
+                  </size>
+                </property>
+
+              <property name="font">
+                <font>
+                  <pointsize>8</pointsize>
+                </font>
+              </property>
+              <property name="text">
+                <string></string>
+              </property>
+              <property name="alignment">
+                <set>Qt::AlignCenter</set>
+              </property>
+            </widget>
+            </item>
+
+            <item>
+              <widget class="QLabel" name="label_3">
+                <property name="sizePolicy">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>24</verstretch>
+                  </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                  <size>
+                    <width>0</width>
+                    <height>24</height>
+                  </size>
+                </property>
+                <property name="text">
+                  <string>Input format</string>
+                </property>
+              </widget>
+            </item>
+
+            <item>
+              <widget class="QLineEdit" name="lineEdit_InputFormat">
+
+                <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>24</verstretch>
+                  </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                  <size>
+                    <width>0</width>
+                    <height>24</height>
+                  </size>
+                </property>
+
+                <property name="font">
+                  <font>
+                    <pointsize>8</pointsize>
+                  </font>
+                </property>
+                <property name="text">
+                  <string></string>
+                </property>
+                <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                </property>
+              </widget>
+            </item>
+
+          </layout>
+         </item>
+         <item row="1" column="0">
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
             <widget class="QComboBox" name="comboBox_camera">
@@ -194,7 +324,7 @@ cameras. Useful if connection and USB camera</string>
            </item>
           </layout>
          </item>
-         <item row="5" column="0">
+         <item row="8" column="0">
           <spacer name="verticalSpacer_5">
            <property name="orientation">
             <enum>Qt::Vertical</enum>
@@ -210,7 +340,7 @@ cameras. Useful if connection and USB camera</string>
            </property>
           </spacer>
          </item>
-         <item row="6" column="0">
+         <item row="9" column="0">
           <widget class="QGroupBox" name="groupBox_params">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -717,7 +847,24 @@ cameras. Useful if connection and USB camera</string>
            </layout>
           </widget>
          </item>
-         <item row="2" column="0">
+         <item row="7" column="0">
+          <widget class="QProgressBar" name="progressBar_camBuffer">
+           <property name="value">
+            <number>0</number>
+           </property>
+           <property name="format">
+            <string>Camera buffer: %p%</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="0">
+          <widget class="QRadioButton" name="ffmpegSource">
+           <property name="text">
+            <string>FFmpeg source</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
           <layout class="QVBoxLayout" name="verticalLayout_9">
            <item>
             <widget class="QLabel" name="label_8">
@@ -730,35 +877,6 @@ cameras. Useful if connection and USB camera</string>
             <widget class="QComboBox" name="comboBox_camera_res"/>
            </item>
           </layout>
-         </item>
-         <item row="3" column="0">
-          <widget class="QPushButton" name="pushButton_camera_connect_disconnect">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>50</height>
-            </size>
-           </property>
-           <property name="font">
-            <font>
-             <pointsize>14</pointsize>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="text">
-            <string>Start Camera</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-          </widget>
          </item>
         </layout>
        </widget>
@@ -1210,8 +1328,8 @@ are used to refine the parameters</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1337</width>
-     <height>22</height>
+     <width>1465</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>

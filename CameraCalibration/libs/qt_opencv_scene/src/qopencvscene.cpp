@@ -5,6 +5,7 @@
 #include <QList>
 
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 QOpenCVScene::QOpenCVScene(QObject *parent) :
     QGraphicsScene(parent),
@@ -90,9 +91,11 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         // 8-bit, 3 channel
     case CV_8UC3:
     {
-        QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_RGB888 );
-
-        return image.rgbSwapped();
+        //QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_RGB888 );
+        //return image.rgbSwapped();
+        cv::Mat rgbMat;
+        cv::cvtColor(inMat, rgbMat, cv::COLOR_BGR2RGB); // invert BGR to RGB
+        return QImage((uchar*)rgbMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_RGB888).copy();
     }
 
         // 8-bit, 1 channel
