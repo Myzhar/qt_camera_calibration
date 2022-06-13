@@ -93,9 +93,15 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
     {
         //QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_RGB888 );
         //return image.rgbSwapped();
-        cv::Mat rgbMat;
+
+        //cv::Mat rgbMat;
+        //cv::cvtColor(inMat, rgbMat, cv::COLOR_BGR2RGB); // invert BGR to RGB
+        //return QImage((uchar*)rgbMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_RGB888).copy();
+
+        QImage result(inMat.cols, inMat.rows, QImage::Format_RGB888);
+        cv::Mat rgbMat(inMat.rows, inMat.cols, CV_8UC3, result.bits(), result.bytesPerLine());
         cv::cvtColor(inMat, rgbMat, cv::COLOR_BGR2RGB); // invert BGR to RGB
-        return QImage((uchar*)rgbMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_RGB888).copy();
+        return result;
     }
 
         // 8-bit, 1 channel
