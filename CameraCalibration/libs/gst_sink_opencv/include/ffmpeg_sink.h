@@ -4,6 +4,7 @@
 
 #include <string>
 #include <utility>
+#include <atomic>
 
 #include <opencv2/core/core.hpp>
 
@@ -23,7 +24,8 @@ public:
 
     bool init();
 
-    double getBufPerc() override { return 0; }
+    double getBufPerc() override { return m_queueSize / 10.; }
+    void dataConsumed() override { --m_queueSize; }
 
 signals:
     void newImage(cv::Mat frame);
@@ -38,4 +40,6 @@ private:
     AVFormatContext* m_formatContext{};
     AVCodecContext* m_codecContext{};
     int m_streamNumber;
+
+    std::atomic_int m_queueSize;
 };

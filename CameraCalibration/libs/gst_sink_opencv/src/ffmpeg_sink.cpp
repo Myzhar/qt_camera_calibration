@@ -123,6 +123,7 @@ void FFmpegThread::run()
                     &stride);
 
                 emit newImage(img);
+                ++m_queueSize;
             }
         }
         av_packet_unref(&packet);

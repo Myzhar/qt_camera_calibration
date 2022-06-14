@@ -328,6 +328,11 @@ void MainWindow::onCameraDisconnected()
 
 void MainWindow::onNewImage( cv::Mat frame )
 {
+    if (auto source = dynamic_cast<CameraThreadBase*>(sender()))
+    {
+        source->dataConsumed();
+    }
+
     static int frmCnt=0;
     static int frameW = 0;
     static int frameH = 0;

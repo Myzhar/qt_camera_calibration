@@ -18,6 +18,7 @@ public:
     ~CameraThread();
 
     double getBufPerc() override;
+    void dataConsumed() override {}
 
 signals:
     void newImage( cv::Mat frame );
