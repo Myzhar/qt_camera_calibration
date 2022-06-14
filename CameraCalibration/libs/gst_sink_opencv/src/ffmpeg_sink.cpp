@@ -116,7 +116,8 @@ void FFmpegThread::run()
                     m_codecContext->width,
                     m_codecContext->height,
                     AV_PIX_FMT_BGR24,
-                    SWS_FAST_BILINEAR, NULL, NULL, NULL);
+                    SWS_POINT,//SWS_FAST_BILINEAR,
+                    NULL, NULL, NULL);
                 sws_scale(img_convert_ctx, videoFrame->data, videoFrame->linesize, 0, m_codecContext->height,
                     &img.data,
                     &stride);

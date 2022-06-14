@@ -345,7 +345,9 @@ void MainWindow::onNewImage( cv::Mat frame )
         frameH = frame.rows;
     }
 
-    mCameraSceneRaw->setFgImage(frame);
+    const auto pixmap = QOpenCVScene::cvMatToQPixmap(frame);
+
+    mCameraSceneRaw->setFgImage(pixmap);
 
     frmCnt++;
 
@@ -359,7 +361,7 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     if( rectified.empty() )
     {
-        mCameraSceneUndistorted->setFgImage(frame);
+        mCameraSceneUndistorted->setFgImage(pixmap);
         ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(150,50,50) ) );
     }
     else

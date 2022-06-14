@@ -31,29 +31,34 @@ QOpenCVScene::~QOpenCVScene()
     delete mBgPixmapItem;
 }
 
-void QOpenCVScene::setFgImage( cv::Mat& cvImg )
+void QOpenCVScene::setFgImage(const cv::Mat& cvImg)
+{
+    return setFgImage(cvMatToQPixmap(cvImg));
+}
+
+void QOpenCVScene::setFgImage(const QPixmap& img)
 {
     if(!mBgPixmapItem)
     {
-        mBgPixmapItem = new QGraphicsPixmapItem( cvMatToQPixmap(cvImg) );
+        mBgPixmapItem = new QGraphicsPixmapItem(img);
         //cv::imshow( "Test", cvImg );
         mBgPixmapItem->setPos( 0,0 );
 
         addItem( mBgPixmapItem );
     }
     else {
-        mBgPixmapItem->setPixmap( cvMatToQPixmap(cvImg) );
+        mBgPixmapItem->setPixmap(img);
     }
 
     //cv::imshow( "Test", cvImg );
     //qDebug() << tr("Image: %1 x %2").arg(cvImg.cols).arg(cvImg.rows);
 
     mBgPixmapItem->setZValue( -10.0 );
-    setSceneRect( 0,0, cvImg.cols, cvImg.rows );
+    setSceneRect( 0,0, img.width(), img.height());
     update();
 }
 
-void QOpenCVScene::setFgImage( QImage& img)
+void QOpenCVScene::setFgImage(const QImage& img)
 {
     if(!mBgPixmapItem)
     {
