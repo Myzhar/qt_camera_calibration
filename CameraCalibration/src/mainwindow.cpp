@@ -249,6 +249,7 @@ bool MainWindow::startCamera()
 
         mCameraThread = ffmpegThread;
 
+        connect(ffmpegThread, &FFmpegThread::cameraDisconnected, this, &MainWindow::onCameraDisconnected);
         connect(ffmpegThread, &FFmpegThread::newImage, this, &MainWindow::onNewImage);
     }
     else
@@ -297,7 +298,7 @@ void MainWindow::onCameraConnected()
     mCameraConnected = true;
 }
 
-void MainWindow::onCameraDisconnected()
+void MainWindow::onCameraDisconnected(bool ok)
 {
     mCameraConnected = false;
 
@@ -320,10 +321,13 @@ void MainWindow::onCameraDisconnected()
     QString output = mGstProcessOutput;
     mGstProcessOutputMutex.unlock();
 
-    QMessageBox::warning( this, tr("Camera disconnected"), 
-        tr("If the camera has been just started please verify\n"
-        "the correctness of Width, Height and FPS\n"
-        "Process output:\n") + output.right(1000).trimmed());
+    if (!ok)
+    {
+        QMessageBox::warning(this, tr("Camera disconnected"),
+            tr("If the camera has been just started please verify\n"
+                "the correctness of Width, Height and FPS\n"
+                "Process output:\n") + output.right(1000).trimmed());
+    }
 }
 
 void MainWindow::onNewImage( cv::Mat frame )

@@ -12,6 +12,8 @@
 
 #include "cameraman.h"
 
+#include <memory>
+
 class CameraThreadBase;
 class QOpenCVScene;
 
@@ -46,7 +48,7 @@ public slots:
 
 protected slots:
     void onCameraConnected();
-    void onCameraDisconnected();
+    void onCameraDisconnected(bool ok);
     void onProcessReadyRead();
 
     void updateParamGUI(cv::Mat K, cv::Mat D);

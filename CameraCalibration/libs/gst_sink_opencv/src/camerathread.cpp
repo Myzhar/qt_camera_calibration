@@ -43,7 +43,7 @@ void CameraThread::run()
 
     if(!mImageSink)
     {
-        emit cameraDisconnected();
+        emit cameraDisconnected(false);
         return;
     }
 
@@ -76,7 +76,7 @@ void CameraThread::run()
 
     qDebug() << tr("CameraThread stopped.");
 
-    emit cameraDisconnected();
+    emit cameraDisconnected(true);
 }
 
 double CameraThread::getBufPerc()

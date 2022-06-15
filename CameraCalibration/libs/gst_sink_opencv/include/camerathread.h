@@ -22,7 +22,7 @@ public:
 
 signals:
     void newImage( cv::Mat frame );
-    void cameraDisconnected();
+    void cameraDisconnected(bool ok);
     void cameraConnected();
 
 protected:

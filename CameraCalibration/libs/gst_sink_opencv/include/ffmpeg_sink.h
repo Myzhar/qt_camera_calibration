@@ -29,6 +29,7 @@ public:
 
 signals:
     void newImage(cv::Mat frame);
+    void cameraDisconnected(bool ok);
 
 protected:
     void run() override;
