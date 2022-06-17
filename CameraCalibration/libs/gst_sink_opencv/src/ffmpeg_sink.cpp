@@ -123,12 +123,35 @@ void FFmpegThread::run()
                     &img.data,
                     &stride);
 
-                ++m_queueSize;
-                emit newImage(img);
+                {
+                    QMutexLocker locker(&m_mtxQueueSize);
+                    while (!isInterruptionRequested() && m_queueSize >= MAX_QUEUE_SIZE)
+                        m_cvQueueSize.wait(&m_mtxQueueSize);
+                }
+
+                if (!isInterruptionRequested())
+                {
+                    ++m_queueSize;
+                    emit newImage(img);
+                }
+
+                //QThread::msleep(200);
             }
         }
         av_packet_unref(&packet);
     }
 
     emit cameraDisconnected(true);
+}
+
+void FFmpegThread::dataConsumed()
+{ 
+    --m_queueSize;
+    m_cvQueueSize.notify_one();
+}
+
+void FFmpegThread::requestInterruption()
+{
+    CameraThreadBase::requestInterruption();
+    m_cvQueueSize.notify_one();
 }
