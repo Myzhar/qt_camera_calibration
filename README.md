@@ -18,3 +18,5 @@ The software support the "standard" Pinhole Camera Model (using 8 distorsion par
 9. Click "Save" to save the camera settings.
 
 On Camera Calibration with OpenCV: https://docs.opencv.org/4.x/d4/d94/tutorial_camera_calibration.html
+
+https://stackoverflow.com/questions/12794876/how-to-verify-the-correctness-of-calibration-of-a-webcam/12821056#12821056
