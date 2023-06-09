@@ -14,7 +14,7 @@ class QCameraCalibrate : public QObject
     Q_OBJECT
 public:
     explicit QCameraCalibrate(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye,
-                              int refineThreshm = 10, QObject *parent = nullptr );
+                              int refineThreshm /*= 10*/, QObject *parent = nullptr );
 
     virtual ~QCameraCalibrate();
 
@@ -48,15 +48,8 @@ private:
 
     std::vector<cv::Point3f> mDefObjCorners;
 
-    int mCalibFlags;
-
-    //cv::Mat mIntrinsic;
-    //cv::Mat mDistCoeffs;
-
     bool mCoeffReady;
     bool mRefined;
-    //bool mFishEye;
-    //double mAlpha;
 
     cv::Size mImgSize;
     cv::Size mCbSize;

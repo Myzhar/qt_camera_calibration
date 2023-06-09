@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 
 #include "camerathread.h"
+#include "ffmpeg_sink.h"
 #include "qopencvscene.h"
 
 #include <QCameraInfo>
@@ -9,6 +10,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSound>
+#include <QSettings>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -21,20 +23,34 @@
 
 #include <iostream>
 
-#include <v4l2compcamera.h>
+
+const auto SETTING_CB_COLS = QStringLiteral("ChessboardCols");
+const auto SETTING_CB_ROWS = QStringLiteral("ChessboardRows");
+const auto SETTING_CB_SIZE = QStringLiteral("ChessboardSize");
+const auto SETTING_CB_MAX_COUNT = QStringLiteral("ChessboardMaxCount");
+
+const auto SETTING_FISHEYE = QStringLiteral("Fisheye");
+
+const auto SETTING_USE_FFMPEG = QStringLiteral("UseFFmpeg");
+
+const auto SETTING_FFMPEG_URL = QStringLiteral("FFmpegUrl");
+const auto SETTING_FFMPEG_INPUT_FORMAT = QStringLiteral("FFmpegInputFormat");
+
 
 using namespace std;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    mCameraThread(NULL),
-    mCameraSceneRaw(NULL),
-    mCameraSceneCheckboard(NULL),
-    mCameraSceneUndistorted(NULL),
-    mCameraCalib(NULL),
-    mCbDetectedSnd(NULL)
+    mCameraThread(nullptr),
+    mCameraSceneRaw(nullptr),
+    mCameraSceneCheckboard(nullptr),
+    mCameraSceneUndistorted(nullptr),
+    mCameraCalib(nullptr),
+    mCbDetectedSnd(nullptr)
 {
+    setWindowIcon(QIcon(":/icon.ico"));
+
     ui->setupUi(this);
 
     killGstLaunch();
@@ -76,17 +92,58 @@ MainWindow::MainWindow(QWidget *parent) :
 
     // <<<<< Stream rendering
 
+    ui->lineEdit_cb_cols->setValidator(new QIntValidator(2, 99, this));
+    ui->lineEdit_cb_rows->setValidator(new QIntValidator(2, 99, this));
+    ui->lineEdit_cb_mm->setValidator(new QIntValidator(1, 999, this));
+    ui->lineEdit_cb_max_count->setValidator(new QIntValidator(10, 99, this));
+
+    auto validationErrorLam = [this] {
+        QMessageBox::warning(this, tr("Validation error"), tr("Please provide a correct value."));
+    };
+
+    for (auto edit : {
+            ui->lineEdit_cb_cols,
+            ui->lineEdit_cb_rows,
+            ui->lineEdit_cb_mm,
+            ui->lineEdit_cb_max_count
+        })
+    {
+        connect(edit, &CustomLineEdit::validationError, validationErrorLam);
+    }
+
+    QSettings settings;
+    ui->lineEdit_cb_cols->setText(settings.value(SETTING_CB_COLS, 10).toString());
+    ui->lineEdit_cb_rows->setText(settings.value(SETTING_CB_ROWS, 7).toString());
+    ui->lineEdit_cb_mm->setText(settings.value(SETTING_CB_SIZE, 25).toString());
+    ui->lineEdit_cb_max_count->setText(settings.value(SETTING_CB_MAX_COUNT, 10).toString());
+
+    ui->checkBox_fisheye->setChecked(settings.value(SETTING_FISHEYE, true).toBool());
+
+    ui->lineEdit_URL->setText(settings.value(SETTING_FFMPEG_URL).toString());
+    ui->lineEdit_InputFormat->setText(settings.value(SETTING_FFMPEG_INPUT_FORMAT).toString());
+
+    (settings.value(SETTING_USE_FFMPEG, false).toBool()
+        ? ui->ffmpegSource : ui->gstreamerSource)->setChecked(true);
+
+
     mElabPool.setMaxThreadCount( 3 );
-
-    int w,h;
-    double fps;
-    int num,den;
-
-    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
 }
 
 MainWindow::~MainWindow()
 {
+    QSettings settings;
+    settings.setValue(SETTING_CB_COLS, ui->lineEdit_cb_cols->text());
+    settings.setValue(SETTING_CB_ROWS, ui->lineEdit_cb_rows->text());
+    settings.setValue(SETTING_CB_SIZE, ui->lineEdit_cb_mm->text());
+    settings.setValue(SETTING_CB_MAX_COUNT, ui->lineEdit_cb_max_count->text());
+
+    settings.setValue(SETTING_FISHEYE, ui->checkBox_fisheye->isChecked());
+
+    settings.setValue(SETTING_USE_FFMPEG, ui->ffmpegSource->isChecked());
+
+    settings.setValue(SETTING_FFMPEG_URL, ui->lineEdit_URL->text());
+    settings.setValue(SETTING_FFMPEG_INPUT_FORMAT, ui->lineEdit_InputFormat->text());
+
     killGstLaunch();
 
     while( mGstProcess.state() == QProcess::Running )
@@ -98,21 +155,16 @@ MainWindow::~MainWindow()
     mElabPool.clear();
 
     delete ui;
-
-    if(mCameraThread)
+    if (mCameraThread)
+    {
+        mCameraThread->requestInterruption();
+        mCameraThread->wait();
         delete mCameraThread;
-
-    if(mCameraSceneRaw)
-        delete mCameraSceneRaw;
-
-    if(mCameraSceneCheckboard)
-        delete mCameraSceneCheckboard;
-
-    if(mCameraSceneUndistorted)
-        delete mCameraSceneUndistorted;
-
-    if(mCameraCalib)
-        delete mCameraCalib;
+    }
+    delete mCameraSceneRaw;
+    delete mCameraSceneCheckboard;
+    delete mCameraSceneUndistorted;
+    delete mCameraCalib;
 }
 
 QString MainWindow::updateOpenCvVer()
@@ -126,13 +178,10 @@ QStringList MainWindow::updateCameraInfo()
 {
     QStringList res;
 
-    mCameras = QCameraInfo::availableCameras();
-    foreach (const QCameraInfo &cameraInfo, mCameras)
+    mCameras = getCameraDescriptions();
+    for (const auto& cameraInfo : mCameras)
     {
-        QString name = cameraInfo.deviceName();
-        qDebug() << cameraInfo.description();
-
-        res.push_back(name);
+        res.push_back(cameraInfo.id);
     }
 
     return res;
@@ -146,11 +195,13 @@ void MainWindow::on_pushButton_update_camera_list_clicked()
 
 void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
 {
-    if( mCameras.size()<1 )
+    if( mCameras.empty() ) {
         return;
+    }
 
-    if( index>mCameras.size()-1  )
+    if( index>mCameras.size()-1  ) {
         return;
+    }
 
     if( index<0 )
     {
@@ -158,38 +209,64 @@ void MainWindow::on_comboBox_camera_currentIndexChanged(int index)
     }
     else
     {
-        ui->label_camera->setText( static_cast<QCameraInfo>(mCameras.at(index)).description() );
+        ui->label_camera->setText(mCameras.at(index).description);
+
+        ui->comboBox_camera_res->clear();
+
+        for (const auto& mode : mCameras[index].modes)
+        {
+            ui->comboBox_camera_res->addItem(mode.getDescr());
+        }
+
     }
 }
 
 bool MainWindow::startCamera()
 {
-    if(!killGstLaunch())
+    if(!killGstLaunch()) {
         return false;
-
-    if(!startGstProcess())
-        return false;
-
-    if( mCameraThread )
-    {
-        delete mCameraThread;
-        mCameraThread = NULL;
     }
 
-    int w,h;
-    double fps;
-    int num,den;
+    if (mCameraThread)
+    {
+        mCameraThread->requestInterruption();
+        mCameraThread->wait();
+        delete mCameraThread;
+        mCameraThread = nullptr;
+    }
 
-    V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
+    if (ui->ffmpegSource->isChecked())
+    {
+        const auto ffmpegThread = new FFmpegThread(
+            ui->lineEdit_URL->text().toStdString(),
+            ui->lineEdit_InputFormat->text().toStdString());
 
-    mCameraThread = new CameraThread( fps );
+        if (!ffmpegThread->init())
+        {
+            delete ffmpegThread;
+            return false;
+        }
 
-    connect( mCameraThread, &CameraThread::cameraConnected,
-             this, &MainWindow::onCameraConnected );
-    connect( mCameraThread, &CameraThread::cameraDisconnected,
-             this, &MainWindow::onCameraDisconnected );
-    connect( mCameraThread, &CameraThread::newImage,
-             this, &MainWindow::onNewImage );
+        mCameraThread = ffmpegThread;
+
+        connect(ffmpegThread, &FFmpegThread::cameraDisconnected, this, &MainWindow::onCameraDisconnected);
+        connect(ffmpegThread, &FFmpegThread::newImage, this, &MainWindow::onNewImage);
+    }
+    else
+    {
+        if (!startGstProcess()) {
+            return false;
+        }
+
+        const auto& mode = mCameras[ui->comboBox_camera->currentIndex()].modes[ui->comboBox_camera_res->currentIndex()];
+
+        const auto cameraThread = new CameraThread(mode.fps());
+        mCameraThread = cameraThread;
+
+        connect(cameraThread, &CameraThread::cameraConnected, this, &MainWindow::onCameraConnected);
+        connect(cameraThread, &CameraThread::cameraDisconnected, this, &MainWindow::onCameraDisconnected);
+        connect(cameraThread, &CameraThread::newImage, this, &MainWindow::onNewImage);
+    }
 
     mCameraThread->start();
 
@@ -202,15 +279,17 @@ void MainWindow::stopCamera()
 
     if( mCameraThread )
     {
-        disconnect( mCameraThread, &CameraThread::cameraConnected,
-                    this, &MainWindow::onCameraConnected );
-        disconnect( mCameraThread, &CameraThread::cameraDisconnected,
-                    this, &MainWindow::onCameraDisconnected );
-        disconnect( mCameraThread, &CameraThread::newImage,
-                    this, &MainWindow::onNewImage );
+        //disconnect( mCameraThread, &CameraThread::cameraConnected,
+        //            this, &MainWindow::onCameraConnected );
+        //disconnect( mCameraThread, &CameraThread::cameraDisconnected,
+        //            this, &MainWindow::onCameraDisconnected );
+        //disconnect( mCameraThread, &CameraThread::newImage,
+        //            this, &MainWindow::onNewImage );
 
+        mCameraThread->requestInterruption();
+        mCameraThread->wait();
         delete mCameraThread;
-        mCameraThread = NULL;
+        mCameraThread = nullptr;
     }
 }
 
@@ -219,7 +298,7 @@ void MainWindow::onCameraConnected()
     mCameraConnected = true;
 }
 
-void MainWindow::onCameraDisconnected()
+void MainWindow::onCameraDisconnected(bool ok)
 {
     mCameraConnected = false;
 
@@ -238,14 +317,26 @@ void MainWindow::onCameraDisconnected()
     ui->pushButton_load_params->setEnabled(true);
     ui->pushButton_save_params->setEnabled(false);
 
-    QMessageBox::warning( this, tr("Camera error"), tr("Camera disconnected\n"
-                                                       "If the camera has been just started\n"
-                                                       "please verify the correctness of\n"
-                                                       "Width, Height and FPS"));
+    mGstProcessOutputMutex.lock();
+    QString output = mGstProcessOutput;
+    mGstProcessOutputMutex.unlock();
+
+    if (!ok)
+    {
+        QMessageBox::warning(this, tr("Camera disconnected"),
+            tr("If the camera has been just started please verify\n"
+                "the correctness of Width, Height and FPS\n"
+                "Process output:\n") + output.right(1000).trimmed());
+    }
 }
 
 void MainWindow::onNewImage( cv::Mat frame )
 {
+    if (auto source = dynamic_cast<CameraThreadBase*>(sender()))
+    {
+        source->dataConsumed();
+    }
+
     static int frmCnt=0;
     static int frameW = 0;
     static int frameH = 0;
@@ -263,13 +354,15 @@ void MainWindow::onNewImage( cv::Mat frame )
         frameH = frame.rows;
     }
 
-    mCameraSceneRaw->setFgImage(frame);
+    const auto pixmap = QOpenCVScene::cvMatToQPixmap(frame);
+
+    mCameraSceneRaw->setFgImage(pixmap);
 
     frmCnt++;
 
     if( ui->pushButton_calibrate->isChecked() && frmCnt%((int)mSrcFps) == 0 )
     {
-        QChessboardElab* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraCalib );
+        auto* elab = new QChessboardElab( this, frame, mCbSize, mCbSizeMm, mCameraCalib );
         mElabPool.tryStart(elab);
     }
 
@@ -277,7 +370,7 @@ void MainWindow::onNewImage( cv::Mat frame )
 
     if( rectified.empty() )
     {
-        mCameraSceneUndistorted->setFgImage(frame);
+        mCameraSceneUndistorted->setFgImage(pixmap);
         ui->graphicsView_undistorted->setBackgroundBrush( QBrush( QColor(150,50,50) ) );
     }
     else
@@ -346,20 +439,17 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 {
     if( checked )
     {
-        mCamDev = ui->comboBox_camera->currentText();
+        const auto& mCamera = mCameras[ui->comboBox_camera->currentIndex()];
+        const auto& mode = mCamera.modes[ui->comboBox_camera_res->currentIndex()];
 
-        int w,h;
-        double fps;
-        int num,den;
+        mLaunchLine = mCamera.launchLine;
 
-        V4L2CompCamera::descr2params( ui->comboBox_camera_res->currentText(),w,h,fps,num,den);
-
-
-        mSrcWidth = w;
-        mSrcHeight = h;
-        mSrcFps = fps;
-        mSrcFpsNum = num;
-        mSrcFpsDen = den;
+        mSrcFormat = mode.format;
+        mSrcWidth = mode.w;
+        mSrcHeight = mode.h;
+        mSrcFps = mode.fps();
+        mSrcFpsNum = mode.num;
+        mSrcFpsDen = mode.den;
 
         updateCbParams();
 
@@ -373,13 +463,15 @@ void MainWindow::on_pushButton_camera_connect_disconnect_clicked(bool checked)
 
         bool fisheye = ui->checkBox_fisheye->isChecked();
 
-        mCameraCalib = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye );
+        const int maxCount = ui->lineEdit_cb_max_count->text().toInt();
+        mCameraCalib = new QCameraCalibrate( cv::Size(mSrcWidth, mSrcHeight), mCbSize, mCbSizeMm, fisheye, maxCount );
 
         connect( mCameraCalib, &QCameraCalibrate::newCameraParams,
                  this, &MainWindow::onNewCameraParams );
 
         cv::Size imgSize;
-        cv::Mat K, D;
+        cv::Mat K;
+        cv::Mat D;
         double alpha;
         mCameraCalib->getCameraParams( imgSize, K, D, alpha, fisheye );
 
@@ -452,7 +544,19 @@ void MainWindow::onProcessReadyRead()
 
 bool MainWindow::killGstLaunch( )
 {
+    if (mGstProcess.state() != QProcess::Running)
+        return true;
+
     // >>>>> Kill gst-launch-1.0 processes
+
+#ifdef Q_OS_WIN
+
+    QProcess killer;
+    killer.start("taskkill /im gst-launch-1.0.exe /f /t");
+    killer.waitForFinished(1000);
+
+#else
+
     QProcess killer;
     QProcess checker;
 
@@ -479,47 +583,69 @@ bool MainWindow::killGstLaunch( )
     }
     while( !done );
     // <<<<< Kill gst-launch-1.0 processes
+#endif // Q_OS_WIN
 
     return true;
 }
 
 bool MainWindow::startGstProcess( )
 {
-    if( mCamDev.size()==0 )
+    // handle command line analogously to https://github.com/GStreamer/gst-plugins-base/blob/master/tools/gst-device-monitor.c
+    if(mCameras.empty()) {
         return false;
+    }
 
     QString launchStr;
 
 #ifdef USE_ARM
-    launchStr = tr(
-                "gst-launch-1.0 v4l2src device=%1 do-timestamp=true ! "
-                "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! nvvidconv ! "
+    launchStr = QStringLiteral(
+                "gst-launch-1.0 %1 do-timestamp=true ! "
+                "\"video/x-raw,format=%2,width=%3,height=%4,framerate=%5/%6\" ! nvvidconv ! "
                 "\"video/x-raw(memory:NVMM),width=%2,height=%3\" ! "
                 //"omxh264enc low-latency=true insert-sps-pps=true ! "
                 "omxh264enc insert-sps-pps=true ! "
                 "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                 "udpsink host=127.0.0.1 port=5000 sync=false async=false -e"
-                ).arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+                ).arg(mLaunchLine).arg(mSrcFormat).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+#elif defined(Q_OS_WIN)
+    launchStr =
+        QStringLiteral("gst-launch-1.0.exe %1 ! "
+            "video/x-raw,format=%2,width=%3,height=%4,framerate=%5/%6 ! videoconvert ! "
+            //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
+            "x264enc key-int-max=1 tune=zerolatency ! "//bitrate=8000 ! "
+            "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
+            "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
+        .arg(mLaunchLine).arg(mSrcFormat).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #else
     launchStr =
-            tr("gst-launch-1.0 v4l2src device=%1 ! "
-               "\"video/x-raw,format=I420,width=%2,height=%3,framerate=%4/%5\" ! videoconvert ! "
+        QStringLiteral("gst-launch-1.0 %1 ! "
+               "\"video/x-raw,format=%2,width=%3,height=%4,framerate=%5/%6\" ! videoconvert ! "
                //"videoscale ! \"video/x-raw,width=%5,height=%6\" ! "
                "x264enc key-int-max=1 tune=zerolatency bitrate=8000 ! "
                "rtph264pay config-interval=1 pt=96 mtu=9000 ! queue ! "
                "udpsink host=127.0.0.1 port=5000 sync=false async=false -e")
-            .arg(mCamDev).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
+            .arg(mLaunchLine).arg(mSrcFormat).arg(mSrcWidth).arg(mSrcHeight).arg(mSrcFpsDen).arg(mSrcFpsNum);
 #endif
 
     qDebug() << tr("Starting pipeline: \n %1").arg(launchStr);
 
     mGstProcess.setProcessChannelMode( QProcess::MergedChannels );
+
+    mGstProcessOutput.clear();
+
+    connect(&mGstProcess, &QProcess::readyReadStandardOutput, [this]() {
+        QString output = mGstProcess.readAllStandardOutput();
+        qDebug() << "Child process trace: " << output;
+        QMutexLocker locker(&mGstProcessOutputMutex);
+        mGstProcessOutput += output;
+    });
+
     mGstProcess.start( launchStr );
 
-    if( !mGstProcess.waitForStarted( 3000 ) )
+    if( !mGstProcess.waitForStarted( 5000 ) )
     {
         // TODO Camera error message
-
+        qDebug() << "Timed out starting a child process";
         return false;
     }
 
@@ -598,8 +724,8 @@ void MainWindow::setNewCameraParams()
         return;
     }
 
-    cv::Mat K(3, 3, CV_64F, cv::Scalar::all(0.0f) );
-    cv::Mat D( 8, 1, CV_64F, cv::Scalar::all(0.0f) );
+    cv::Mat K(3, 3, CV_64F, cv::Scalar::all(0.0F) );
+    cv::Mat D( 8, 1, CV_64F, cv::Scalar::all(0.0F) );
 
     K.ptr<double>(0)[0] = ui->lineEdit_fx->text().toDouble();
     K.ptr<double>(0)[1] = ui->lineEdit_K_01->text().toDouble();
@@ -738,8 +864,9 @@ void MainWindow::on_pushButton_load_params_clicked()
                                                     tr("Save Camera Calibration Parameters"), QDir::homePath(),
                                                     tr("%1;;%2").arg(filter1).arg(filter2) );
 
-    if( fileName.isEmpty() )
+    if( fileName.isEmpty() ) {
         return;
+    }
 
     // Not using the function from CameraUndistort to verify that they are coherent before setting them
 
@@ -747,7 +874,8 @@ void MainWindow::on_pushButton_load_params_clicked()
 
     if( fs.isOpened() )
     {
-        int w,h;
+        int w;
+        int h;
         bool fisheye;
         double alpha;
 
@@ -756,18 +884,14 @@ void MainWindow::on_pushButton_load_params_clicked()
         fs["FishEye"] >> fisheye;
         fs["Alpha"] >> alpha;
 
+        const auto& camera = mCameras[ui->comboBox_camera->currentIndex()];
+
         bool matched = false;
-        for( int i=0; i<ui->comboBox_camera_res->count(); i++ )
+        for( int i = 0; i < camera.modes.size(); i++ )
         {
-            QString descr = ui->comboBox_camera_res->itemText( i );
+            const auto& mode = camera.modes[ui->comboBox_camera_res->currentIndex()];
 
-            int w1,h1;
-            double fps;
-            int num,den;
-
-            V4L2CompCamera::descr2params( descr, w1,h1,fps,num,den );
-
-            if( w==w1 && h==h1 )
+            if( mode.w==w && mode.h==h )
             {
                 matched=true;
                 ui->comboBox_camera_res->setCurrentIndex(i);
@@ -783,7 +907,8 @@ void MainWindow::on_pushButton_load_params_clicked()
             return;
         }
 
-        cv::Mat K,D;
+        cv::Mat K;
+        cv::Mat D;
 
         fs["CameraMatrix"] >> K;
         fs["DistCoeffs"] >> D;
@@ -800,8 +925,9 @@ void MainWindow::on_pushButton_load_params_clicked()
 
 void MainWindow::on_pushButton_save_params_clicked()
 {
-    if( !mCameraCalib )
+    if( !mCameraCalib ) {
         return;
+    }
 
     QString selFilter;
 
@@ -812,8 +938,9 @@ void MainWindow::on_pushButton_save_params_clicked()
                                                     tr("Save Camera Calibration Parameters"), QDir::homePath(),
                                                     tr("%1;;%2").arg(filter1).arg(filter2), &selFilter);
 
-    if( fileName.isEmpty() )
+    if( fileName.isEmpty() ) {
         return;
+    }
 
     if( !fileName.endsWith( ".yaml", Qt::CaseInsensitive) &&
             !fileName.endsWith( ".yml", Qt::CaseInsensitive) &&
@@ -834,7 +961,8 @@ void MainWindow::on_pushButton_save_params_clicked()
     if( fs.isOpened() )
     {
         cv::Size imgSize;
-        cv::Mat K,D;
+        cv::Mat K;
+        cv::Mat D;
         bool fisheye;
         double alpha;
 
@@ -849,17 +977,6 @@ void MainWindow::on_pushButton_save_params_clicked()
     }
 }
 
-void MainWindow::on_comboBox_camera_currentIndexChanged(const QString &arg1)
-{
-    QList<V4L2CompCamera> fmtList = V4L2CompCamera::enumCompFormats( arg1 );
-
-    ui->comboBox_camera_res->clear();
-
-    foreach (V4L2CompCamera fmt, fmtList)
-    {
-        ui->comboBox_camera_res->addItem( fmt.getDescr() );
-    }
-}
 
 void MainWindow::on_horizontalSlider_alpha_valueChanged(int value)
 {
@@ -875,13 +992,14 @@ void MainWindow::on_checkBox_fisheye_clicked(bool checked)
     if( mCameraCalib )
     {
         mCameraCalib->setFisheye( checked );
+
+        cv::Size imgSize;
+        cv::Mat K;
+        cv::Mat D;
+        bool fisheye;
+        double alpha;
+
+        mCameraCalib->getCameraParams(imgSize, K, D, alpha, fisheye);
+        updateParamGUI(K, D);
     }
-    cv::Size imgSize;
-    cv::Mat K,D;
-    bool fisheye;
-    double alpha;
-
-    mCameraCalib->getCameraParams( imgSize,K,D,alpha,fisheye );
-
-    updateParamGUI( K,D );
 }

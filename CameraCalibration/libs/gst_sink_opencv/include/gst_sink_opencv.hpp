@@ -6,10 +6,9 @@
 #include <mutex>
 #include <queue>
 
-#define FRAME_BUF_SIZE 5
-
 class GstSinkOpenCV
 {
+    enum { FRAME_BUF_SIZE = 5 };
 public:
     static GstSinkOpenCV* Create(std::string input_pipeline, size_t bufSize = FRAME_BUF_SIZE, int timeout_sec=15, bool debug=false );
     ~GstSinkOpenCV();
@@ -34,9 +33,9 @@ private:
 
     std::queue<cv::Mat> mFrameBuffer;
 
-    int mWidth;
-    int mHeight;
-    int mChannels;
+    int mWidth{};
+    int mHeight{};
+    int mChannels{};
 
     bool mDebug;
 

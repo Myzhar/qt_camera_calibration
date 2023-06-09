@@ -2,11 +2,13 @@
 
 #include <QtGlobal>
 #include <QDebug>
+#include <QMutexLocker>
 
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <iostream>
+#include <utility>
 
 #include "cameraundistort.h"
 
@@ -14,10 +16,10 @@ using namespace std;
 
 QCameraCalibrate::QCameraCalibrate(cv::Size imgSize, cv::Size cbSize, float cbSquareSizeMm, bool fishEye, int refineThreshm, QObject *parent)
     : QObject(parent)
-    , mUndistort(NULL)
+    , mUndistort(nullptr)
 {
-    mImgSize = imgSize;
-    mCbSize = cbSize;
+    mImgSize = std::move(imgSize);
+    mCbSize = std::move(cbSize);
     mCbSquareSizeMm = cbSquareSizeMm;
     //mAlpha = 0.0;
 
@@ -38,8 +40,7 @@ QCameraCalibrate::QCameraCalibrate(cv::Size imgSize, cv::Size cbSize, float cbSq
 
 QCameraCalibrate::~QCameraCalibrate()
 {
-    if(mUndistort)
-        delete mUndistort;
+    delete mUndistort;
 }
 
 void QCameraCalibrate::setNewAlpha( double alpha )
@@ -60,18 +61,20 @@ void QCameraCalibrate::setFisheye( bool fisheye )
 
 void QCameraCalibrate::getCameraParams( cv::Size& imgSize, cv::Mat &K, cv::Mat &D, double &alpha, bool &fisheye)
 {
-    if( !mUndistort )
+    if( !mUndistort ) {
         return;
+    }
 
     mUndistort->getCameraParams( imgSize, fisheye, K, D, alpha );
 }
 
 bool QCameraCalibrate::setCameraParams(cv::Size imgSize, cv::Mat &K, cv::Mat &D, double alpha, bool fishEye )
 {
-    if( !mUndistort )
+    if( !mUndistort ) {
         return false;
+    }
 
-    mImgSize = imgSize;
+    mImgSize = std::move(imgSize);
 
     if( mUndistort->setCameraParams( mImgSize, fishEye, K, D, alpha ) )
     {
@@ -89,7 +92,7 @@ bool QCameraCalibrate::setCameraParams(cv::Size imgSize, cv::Mat &K, cv::Mat &D,
 
 void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
 {
-    mMutex.lock();
+    QMutexLocker locker(&mMutex);
 
     if( (int)mObjCornersVec.size() == mRefineThresh )
     {
@@ -109,7 +112,8 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
 
         cv::Size imgSize;
         bool fisheye;
-        cv::Mat K,D;
+        cv::Mat K;
+        cv::Mat D;
         double alpha;
 
         mUndistort->getCameraParams( imgSize, fisheye, K, D, alpha );
@@ -117,7 +121,7 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
         if(fisheye)
         {
             // >>>>> Calibration flags
-            mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
+            int mCalibFlags = cv::fisheye::CALIB_FIX_SKEW;
             if( mRefined )
             {
                 mCalibFlags |= cv::fisheye::CALIB_USE_INTRINSIC_GUESS;
@@ -125,7 +129,7 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
             // <<<<< Calibration flags
 
             // >>>>> FishEye model wants only 4 distorsion parameters
-            cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0f) );
+            cv::Mat feDist = cv::Mat( 4, 1, CV_64F, cv::Scalar::all(0.0F) );
             feDist.ptr<double>(0)[0] = D.ptr<double>(0)[0];
             feDist.ptr<double>(1)[0] = D.ptr<double>(1)[0];
             feDist.ptr<double>(2)[0] = D.ptr<double>(2)[0];
@@ -147,10 +151,10 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
         else
         {
             // >>>>> Calibration flags
-            mCalibFlags = CV_CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters
+            int mCalibFlags = cv::CALIB_RATIONAL_MODEL; // Using Camera model with 8 distorsion parameters
             if( mRefined )
             {
-                mCalibFlags |= CV_CALIB_USE_INTRINSIC_GUESS;
+                mCalibFlags |= cv::CALIB_USE_INTRINSIC_GUESS;
             }
             // <<<<< Calibration flags
 
@@ -164,16 +168,15 @@ void QCameraCalibrate::addCorners( vector<cv::Point2f>& img_corners )
 
         mCoeffReady = true;
     }
-
-    mMutex.unlock();
 }
 
 cv::Mat QCameraCalibrate::undistort(cv::Mat& raw)
 {
-    if(!mCoeffReady)
-        return cv::Mat();
+    if(!mCoeffReady) {
+        return {};
+    }
 
-    mMutex.lock();
+    QMutexLocker locker(&mMutex);
 
     cv::Mat res;
 
@@ -181,8 +184,6 @@ cv::Mat QCameraCalibrate::undistort(cv::Mat& raw)
     {
         res = mUndistort->undistort( raw );
     }
-
-    mMutex.unlock();
 
     return res;
 }

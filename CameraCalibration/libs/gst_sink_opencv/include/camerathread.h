@@ -1,14 +1,15 @@
 #ifndef CAMERATHREAD_H
 #define CAMERATHREAD_H
 
-#include <QThread>
+#include "camerathreadbase.h"
+
 #include <QMutex>
 #include <QQueue>
 
 #include <opencv2/core/core.hpp>
 #include "gst_sink_opencv.hpp"
 
-class CameraThread : public QThread
+class CameraThread : public CameraThreadBase
 {
     Q_OBJECT
 
@@ -16,15 +17,16 @@ public:
     CameraThread( double fps );
     ~CameraThread();
 
-    double getBufPerc();
+    double getBufPerc() override;
+    void dataConsumed() override {}
 
 signals:
     void newImage( cv::Mat frame );
-    void cameraDisconnected();
+    void cameraDisconnected(bool ok);
     void cameraConnected();
 
 protected:
-    void run() Q_DECL_OVERRIDE;
+    void run() override;
 
 private:
     GstSinkOpenCV* mImageSink;

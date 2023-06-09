@@ -6,6 +6,7 @@
 
 #include <mutex>
 #include <chrono>
+#include <utility>
 
 using namespace std;
 
@@ -13,9 +14,9 @@ GstSinkOpenCV::GstSinkOpenCV( std::string input_pipeline, int bufSize, bool debu
 {
     mFrameBufferSize = bufSize;
 
-    mPipelineStr = input_pipeline;
-    mPipeline = NULL;
-    mSink = NULL;
+    mPipelineStr = std::move(input_pipeline);
+    mPipeline = nullptr;
+    mSink = nullptr;
 
     mDebug = debug;
 }
@@ -27,7 +28,7 @@ GstSinkOpenCV::~GstSinkOpenCV()
         /* cleanup and exit */
         gst_element_set_state( mPipeline, GST_STATE_NULL );
         gst_object_unref( mPipeline );
-        mPipeline = NULL;
+        mPipeline = nullptr;
     }
 
     /*if(mSink)
@@ -40,12 +41,12 @@ GstSinkOpenCV::~GstSinkOpenCV()
 
 GstSinkOpenCV* GstSinkOpenCV::Create(string input_pipeline, size_t bufSize, int timeout_sec, bool debug )
 {
-    GstSinkOpenCV* gstSinkOpencv = new GstSinkOpenCV( input_pipeline, bufSize, debug );
+    auto* gstSinkOpencv = new GstSinkOpenCV( std::move(input_pipeline), bufSize, debug );
 
     if( !gstSinkOpencv->init( timeout_sec ) )
     {
         delete gstSinkOpencv;
-        return NULL;
+        return nullptr;
     }
 
     return gstSinkOpencv;
@@ -53,7 +54,7 @@ GstSinkOpenCV* GstSinkOpenCV::Create(string input_pipeline, size_t bufSize, int 
 
 bool GstSinkOpenCV::init( int timeout_sec )
 {
-    GError *error = NULL;
+    GError *error = nullptr;
     GstStateChangeReturn ret;
 
     mPipelineStr += " ! videoconvert ! " \
@@ -63,7 +64,7 @@ bool GstSinkOpenCV::init( int timeout_sec )
 
     mPipeline = gst_parse_launch( mPipelineStr.c_str(), &error );
 
-    if (error != NULL)
+    if (error != nullptr)
     {
         g_print ("*** Error *** could not construct pipeline: %s\n", error->message);
         g_clear_error (&error);
@@ -90,7 +91,7 @@ bool GstSinkOpenCV::init( int timeout_sec )
     /* This can block for up to "timeout_sec" seconds. If your machine is really overloaded,
        * it might time out before the pipeline prerolled and we generate an error. A
        * better way is to run a mainloop and catch errors there. */
-    ret = gst_element_get_state( mPipeline, NULL, NULL, timeout_sec * GST_SECOND );
+    ret = gst_element_get_state( mPipeline, nullptr, nullptr, timeout_sec * GST_SECOND );
     if (/*ret == GST_STATE_CHANGE_FAILURE*/ret!=GST_STATE_CHANGE_SUCCESS)
     {
         g_print ("Source connection timeout\n");
@@ -112,7 +113,8 @@ bool GstSinkOpenCV::init( int timeout_sec )
         GstStructure *s;
         GstMapInfo map;
 
-        gint width, height;
+        gint width;
+        gint height;
 
         gboolean res;
 
@@ -156,15 +158,15 @@ bool GstSinkOpenCV::init( int timeout_sec )
 
                 memcpy( frame.data, map.data, map.size );
 
-                mFrameMutex.lock();
-                mFrameBuffer.push( frame );
-                mFrameMutex.unlock();
-
-                if( mDebug )
+                if (mDebug)
                 {
-                    cv::imshow( "First Frame", frame );
-                    cv::waitKey( 5 );
+                    cv::imshow("First Frame", frame);
+                    cv::waitKey(5);
                 }
+
+                mFrameMutex.lock();
+                mFrameBuffer.push( std::move(frame) );
+                mFrameMutex.unlock();
             }
 
             gst_buffer_unmap (buffer, &map);
@@ -201,7 +203,8 @@ GstFlowReturn GstSinkOpenCV::on_new_sample_from_sink( GstElement* elt, GstSinkOp
         GstStructure *s;
         GstMapInfo map;
 
-        gint width, height;
+        gint width;
+        gint height;
 
         gboolean res;
 
@@ -257,22 +260,21 @@ GstFlowReturn GstSinkOpenCV::on_new_sample_from_sink( GstElement* elt, GstSinkOp
 
                 memcpy( frame.data, map.data, map.size );
 
-                sinkData->mFrameBuffer.push( frame );
+                if (sinkData->mDebug)
+                {
+                    cv::imshow("New frame", frame);
+                }
+
+                sinkData->mFrameBuffer.push( std::move(frame) );
 
                 //std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
                 //std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() <<std::endl;
-
-                if( sinkData->mDebug )
-                {
-                    cv::imshow( "New frame", frame );
-                }
             }
             else
             {
                 std::cout << "Buffer full" << endl;
             }
             sinkData->mFrameMutex.unlock();
-
 
 
             gst_buffer_unmap (buffer, &map);
@@ -299,14 +301,14 @@ double GstSinkOpenCV::getBufPerc()
 
 cv::Mat GstSinkOpenCV::getLastFrame()
 {
-    if( mFrameBuffer.size()==0 )
-        return cv::Mat();
-
     cv::Mat frame;
 
     mFrameMutex.lock();
-    frame = mFrameBuffer.front();
-    mFrameBuffer.pop();
+    if (!mFrameBuffer.empty())
+    {
+        frame = std::move(mFrameBuffer.front());
+        mFrameBuffer.pop();
+    }
     mFrameMutex.unlock();
 
     return frame;

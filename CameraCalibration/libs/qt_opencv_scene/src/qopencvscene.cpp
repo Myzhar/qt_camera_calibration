@@ -5,11 +5,12 @@
 #include <QList>
 
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 QOpenCVScene::QOpenCVScene(QObject *parent) :
     QGraphicsScene(parent),
-    mBgPixmapItem(NULL),
-    mTrackRect(NULL)
+    mBgPixmapItem(nullptr),
+    mTrackRect(nullptr)
 {
     setBackgroundBrush( QBrush(QColor(255,255,255)));
 
@@ -27,32 +28,37 @@ QOpenCVScene::QOpenCVScene(QObject *parent) :
 
 QOpenCVScene::~QOpenCVScene()
 {
-    if( mBgPixmapItem )
-        delete mBgPixmapItem;
+    delete mBgPixmapItem;
 }
 
-void QOpenCVScene::setFgImage( cv::Mat& cvImg )
+void QOpenCVScene::setFgImage(const cv::Mat& cvImg)
+{
+    return setFgImage(cvMatToQPixmap(cvImg));
+}
+
+void QOpenCVScene::setFgImage(const QPixmap& img)
 {
     if(!mBgPixmapItem)
     {
-        mBgPixmapItem = new QGraphicsPixmapItem( cvMatToQPixmap(cvImg) );
+        mBgPixmapItem = new QGraphicsPixmapItem(img);
         //cv::imshow( "Test", cvImg );
         mBgPixmapItem->setPos( 0,0 );
 
         addItem( mBgPixmapItem );
     }
-    else
-        mBgPixmapItem->setPixmap( cvMatToQPixmap(cvImg) );
+    else {
+        mBgPixmapItem->setPixmap(img);
+    }
 
     //cv::imshow( "Test", cvImg );
     //qDebug() << tr("Image: %1 x %2").arg(cvImg.cols).arg(cvImg.rows);
 
     mBgPixmapItem->setZValue( -10.0 );
-    setSceneRect( 0,0, cvImg.cols, cvImg.rows );
+    setSceneRect( 0,0, img.width(), img.height());
     update();
 }
 
-void QOpenCVScene::setFgImage( QImage& img)
+void QOpenCVScene::setFgImage(const QImage& img)
 {
     if(!mBgPixmapItem)
     {
@@ -90,9 +96,17 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         // 8-bit, 3 channel
     case CV_8UC3:
     {
-        QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_RGB888 );
+        //QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_RGB888 );
+        //return image.rgbSwapped();
 
-        return image.rgbSwapped();
+        //cv::Mat rgbMat;
+        //cv::cvtColor(inMat, rgbMat, cv::COLOR_BGR2RGB); // invert BGR to RGB
+        //return QImage((uchar*)rgbMat.data, inMat.cols, inMat.rows, static_cast<int>(inMat.step), QImage::Format_RGB888).copy();
+
+        QImage result(inMat.cols, inMat.rows, QImage::Format_RGB888);
+        cv::Mat rgbMat(inMat.rows, inMat.cols, CV_8UC3, result.bits(), result.bytesPerLine());
+        cv::cvtColor(inMat, rgbMat, cv::COLOR_BGR2RGB); // invert BGR to RGB
+        return result;
     }
 
         // 8-bit, 1 channel
@@ -103,8 +117,9 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         // only create our color table once
         if ( sColorTable.isEmpty() )
         {
-            for ( int i = 0; i < 256; ++i )
+            for ( int i = 0; i < 256; ++i ) {
                 sColorTable.push_back( qRgb( i, i, i ) );
+            }
         }
 
         QImage image( inMat.data, inMat.cols, inMat.rows, inMat.step, QImage::Format_Indexed8 );
@@ -119,7 +134,7 @@ QImage QOpenCVScene::cvMatToQImage( const cv::Mat &inMat )
         break;
     }
 
-    return QImage();
+    return {};
 }
 
 QPixmap QOpenCVScene::cvMatToQPixmap( const cv::Mat &inMat )

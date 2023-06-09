@@ -19,18 +19,19 @@ public:
 
 public slots:
     /// Sets Background Image from OpenCV cv::Mat
-    void setFgImage( cv::Mat& cvImg );
-    void setFgImage( QImage& img);
+    void setFgImage(const cv::Mat& cvImg);
+    void setFgImage(const QPixmap& img);
+    void setFgImage(const QImage& img);
 
 //    virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
 //    virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
 //    virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
-private:
+public:
     /// Converts cv::Mat to QImage
-    QImage  cvMatToQImage( const cv::Mat &inMat );
+    static QImage  cvMatToQImage( const cv::Mat &inMat );
     /// Converts cv::Mat to QPixmap
-    QPixmap cvMatToQPixmap( const cv::Mat &inMat );
+    static QPixmap cvMatToQPixmap( const cv::Mat &inMat );
 
 signals:
     void mouseClicked( qreal normX, qreal normY, qreal normW, qreal normH, quint8 button);

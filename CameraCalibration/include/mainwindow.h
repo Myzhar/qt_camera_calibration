@@ -3,14 +3,18 @@
 
 #include <QMainWindow>
 #include <QLabel>
-#include <QCameraInfo>
 #include <QProcess>
 #include <QThreadPool>
 #include <QSound>
+#include <QMutex>
 
 #include <opencv2/core/core.hpp>
 
-class CameraThread;
+#include "cameraman.h"
+
+#include <memory>
+
+class CameraThreadBase;
 class QOpenCVScene;
 
 class QCameraCalibrate;
@@ -44,7 +48,7 @@ public slots:
 
 protected slots:
     void onCameraConnected();
-    void onCameraDisconnected();
+    void onCameraDisconnected(bool ok);
     void onProcessReadyRead();
 
     void updateParamGUI(cv::Mat K, cv::Mat D);
@@ -79,8 +83,6 @@ private slots:
     void on_pushButton_load_params_clicked();
     void on_pushButton_save_params_clicked();
 
-    void on_comboBox_camera_currentIndexChanged(const QString &arg1);
-
     void on_horizontalSlider_alpha_valueChanged(int value);
 
     void on_checkBox_fisheye_clicked(bool checked);
@@ -93,8 +95,11 @@ private:
 
     QProcess mGstProcess;
 
-    QList<QCameraInfo> mCameras;
-    CameraThread* mCameraThread;
+    QString mGstProcessOutput;
+    QMutex mGstProcessOutputMutex;
+
+    std::vector<CameraDesc> mCameras;
+    CameraThreadBase* mCameraThread;
     bool mCameraConnected;
 
     QOpenCVScene* mCameraSceneRaw;
@@ -103,15 +108,17 @@ private:
 
     cv::Mat mLastFrame;
 
-    QString mCamDev;
-    int mSrcWidth;
-    int mSrcHeight;
-    double mSrcFps;
-    int mSrcFpsNum;
-    int mSrcFpsDen;
+    QString mLaunchLine;
 
-    cv::Size mCbSize;
-    float mCbSizeMm;
+    QString mSrcFormat;
+    int mSrcWidth{};
+    int mSrcHeight{};
+    double mSrcFps{};
+    int mSrcFpsNum{};
+    int mSrcFpsDen{};
+
+    cv::Size mCbSize{};
+    float mCbSizeMm{};
 
     QThreadPool mElabPool;
 
